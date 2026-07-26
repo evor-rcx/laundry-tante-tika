@@ -8,3 +8,4 @@ coverage/
 !.env.example
 laundry.keystore
 keystore_base64.txt
+laundry-tante-tika.jks
