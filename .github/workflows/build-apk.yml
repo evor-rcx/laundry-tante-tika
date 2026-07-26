@@ -28,8 +28,11 @@ jobs:
     - name: Build Web App
       run: bun run build
 
-    - name: Add Android Platform & Sync
+    - name: Init Capacitor
       run: npx cap init "laundry-tante-tika" "com.laundry.tantetika" --web-dir=dist
+
+    - name: Add Android Platform
+      run: npx cap add android
 
     - name: Sync Capacitor
       run: npx cap sync android
