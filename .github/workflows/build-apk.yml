@@ -29,10 +29,10 @@ jobs:
       run: bun run build
 
     - name: Add Android Platform & Sync
-      run: |
-        npx cap init --yes --web-dir dist laundry-tante-tika com.laundry.tantetika
-        npx cap add android
-        npx cap sync android
+      run: npx cap init "laundry-tante-tika" "com.laundry.tantetika" --web-dir=dist
+
+    - name: Sync Capacitor
+      run: npx cap sync android
 
     - name: Build APK (Release)
       working-directory: ./android
