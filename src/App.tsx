@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Printer, 
@@ -101,19 +102,45 @@ export default function App() {
   });
 
   useEffect(() => {
+    // Load from IndexedDB on startup
+    const loadFromIDB = async () => {
+      try {
+        const idbHistory = await get('tt_laundry_history');
+        if (idbHistory) setHistory(idbHistory);
+
+        const idbCustomers = await get('tt_saved_customers');
+        if (idbCustomers) setSavedCustomers(idbCustomers);
+
+        const idbCart = await get('tt_laundry_cart');
+        if (idbCart) setCart(idbCart);
+
+        const idbCustomer = await get('tt_laundry_customer');
+        if (idbCustomer) setCustomer(idbCustomer);
+      } catch (err) {
+        console.error("Failed to load from IDB", err);
+      }
+    };
+    loadFromIDB();
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('tt_saved_customers', JSON.stringify(savedCustomers));
+    set('tt_saved_customers', savedCustomers).catch(console.error);
   }, [savedCustomers]);
 
   useEffect(() => {
     localStorage.setItem('tt_laundry_customer', JSON.stringify(customer));
+    set('tt_laundry_customer', customer).catch(console.error);
   }, [customer]);
 
   useEffect(() => {
     localStorage.setItem('tt_laundry_cart', JSON.stringify(cart));
+    set('tt_laundry_cart', cart).catch(console.error);
   }, [cart]);
 
   useEffect(() => {
     localStorage.setItem('tt_laundry_history', JSON.stringify(history));
+    set('tt_laundry_history', history).catch(console.error);
   }, [history]);
 
   const saveCustomer = (c: CustomerInfo) => {
@@ -301,17 +328,99 @@ export default function App() {
     }
     try {
       const { BleClient } = await import('@capacitor-community/bluetooth-le');
-      await BleClient.initialize();
+      await BleClient.initialize({ androidNeverForLocation: true });
 
+      try {
+        const enabled = await BleClient.isEnabled();
+        if (!enabled) {
+          await BleClient.requestEnable();
+        }
+      } catch (e) {
+        console.log("Bluetooth enabled check:", e);
+      }
+
+      // Daftar UUID layanan printer thermal yang umum di pasaran
+      const OPTIONAL_PRINTER_SERVICES = [
+        '000018f0-0000-1000-8000-00805f9b34fb', // Standard POS thermal printer
+        '0000e781-0000-1000-8000-00805f9b34fb', // MPT-II, PT-210, Panda, POS-58
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC transparent UART
+        '0000ff00-0000-1000-8000-00805f9b34fb', // General BLE Serial POS
+        '0000fff0-0000-1000-8000-00805f9b34fb', // General BLE Serial POS
+        '0000ae30-0000-1000-8000-00805f9b34fb', // Zebra / Generic
+        'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+        '0000ff80-0000-1000-8000-00805f9b34fb',
+        '0000feea-0000-1000-8000-00805f9b34fb',
+        '0000af30-0000-1000-8000-00805f9b34fb',
+        '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10 / CC2541 BLE module
+        '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART Service (NUS)
+      ];
+
+      // Request device TANPA filter services agar SEMUA perangkat Bluetooth/Printer thermal terdeteksi
       const device = await BleClient.requestDevice({
-        services: ['000018f0-0000-1000-8000-00805f9b34fb'],
+        optionalServices: OPTIONAL_PRINTER_SERVICES,
       });
 
-      await BleClient.connect(device.deviceId);
-      showModal("Mencetak...", "Mengirim data ke printer.");
+      showModal("Mencetak...", `Menghubungkan ke printer ${device.name || 'Bluetooth'}...`);
+      await BleClient.connect(device.deviceId, undefined, { timeout: 15000 });
 
-      const SERVICE = '000018f0-0000-1000-8000-00805f9b34fb';
-      const CHAR = '00002af1-0000-1000-8000-00805f9b34fb';
+      // Deteksi service & characteristic write secara dinamis dari printer
+      let targetService = '';
+      let targetChar = '';
+      let isWithoutResponse = false;
+
+      const KNOWN_WRITE_CHARS = [
+        '00002af1-0000-1000-8000-00805f9b34fb',
+        '0000bef7-0000-1000-8000-00805f9b34fb',
+        '0000bef8-0000-1000-8000-00805f9b34fb',
+        '49535343-8841-43f4-a8d4-ecbe34729bb3',
+        '0000ff02-0000-1000-8000-00805f9b34fb',
+        '0000fff2-0000-1000-8000-00805f9b34fb',
+        '0000fff1-0000-1000-8000-00805f9b34fb',
+        '0000ae01-0000-1000-8000-00805f9b34fb',
+        '0000ffe1-0000-1000-8000-00805f9b34fb',
+        '6e400002-b5a3-f393-e0a9-e50e24dcca9e'
+      ];
+
+      try {
+        const discovered = await BleClient.getServices(device.deviceId);
+        // Prioritas 1: Cari characteristic printer yang sudah dikenal
+        for (const s of discovered) {
+          for (const c of s.characteristics) {
+            if (KNOWN_WRITE_CHARS.includes(c.uuid.toLowerCase())) {
+              targetService = s.uuid;
+              targetChar = c.uuid;
+              isWithoutResponse = !c.properties.write && c.properties.writeWithoutResponse;
+              break;
+            }
+          }
+          if (targetService) break;
+        }
+
+        // Prioritas 2: Jika belum ketemu, cari characteristic apapun yang memiliki write / writeWithoutResponse
+        if (!targetService) {
+          for (const s of discovered) {
+            const sUuid = s.uuid.toLowerCase();
+            if (sUuid.includes('1800') || sUuid.includes('1801') || sUuid.includes('180a')) continue;
+            for (const c of s.characteristics) {
+              if (c.properties.write || c.properties.writeWithoutResponse) {
+                targetService = s.uuid;
+                targetChar = c.uuid;
+                isWithoutResponse = !c.properties.write && c.properties.writeWithoutResponse;
+                break;
+              }
+            }
+            if (targetService) break;
+          }
+        }
+      } catch (err) {
+        console.warn("Gagal deteksi services otomatis, menggunakan default:", err);
+      }
+
+      // Default fallback jika tidak ditemukan
+      if (!targetService || !targetChar) {
+        targetService = '000018f0-0000-1000-8000-00805f9b34fb';
+        targetChar = '00002af1-0000-1000-8000-00805f9b34fb';
+      }
 
       let text = "\x1B\x40\x1B\x61\x01\x1B\x45\x01LAUNDRY TANTE TIKA\n\x1B\x45\x00";
       text += "Jl. Zamrud Depan Gg. Zamrud 2\nRT 42, Bontang Selatan\n";
@@ -343,17 +452,34 @@ export default function App() {
 
       const encoder = new TextEncoder();
       const data = encoder.encode(text);
-      for (let i = 0; i < data.length; i += 20) {
-        const chunk = data.slice(i, i + 20);
-        await BleClient.write(device.deviceId, SERVICE, CHAR, new DataView(chunk.buffer));
+      const chunkSize = 20; // 20 bytes aman untuk semua jenis Bluetooth LE buffer
+      for (let i = 0; i < data.length; i += chunkSize) {
+        const chunk = data.slice(i, i + chunkSize);
+        const dataView = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+        if (isWithoutResponse) {
+          await BleClient.writeWithoutResponse(device.deviceId, targetService, targetChar, dataView);
+        } else {
+          await BleClient.write(device.deviceId, targetService, targetChar, dataView);
+        }
+        await new Promise(r => setTimeout(r, 25)); // Jeda agar printer buffer tidak overload
       }
 
-      await BleClient.disconnect(device.deviceId);
+      await new Promise(r => setTimeout(r, 300));
+      try {
+        await BleClient.disconnect(device.deviceId);
+      } catch (dcErr) {
+        console.warn("Disconnect note:", dcErr);
+      }
+
       saveToHistory();
       resetForm();
       showModal("Berhasil", "Nota telah dicetak. Transaksi telah disimpan di riwayat.");
     } catch (error: any) {
-      showModal("Gagal", error.message || "Pastikan Bluetooth aktif dan printer terhubung.");
+      const msg = error?.message || String(error);
+      if (msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('closed')) {
+        return;
+      }
+      showModal("Gagal Mencetak", `Pastikan Bluetooth & Lokasi (GPS) HP aktif serta Printer Bluetooth sudah menyala.\n\nDetail: ${msg}`);
     }
   };
 
