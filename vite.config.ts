@@ -13,21 +13,21 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'TT Laundry',
-          short_name: 'TT Laundry',
+          name: 'Laundry Tante Tika',
+          short_name: 'Laundry Tante Tika',
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',
           icons: [
             {
-              src: 'logo.svg',
+              src: 'icon.png',
               sizes: '192x192',
-              type: 'image/svg+xml'
+              type: 'image/png'
             },
             {
-              src: 'logo.svg',
+              src: 'icon.png',
               sizes: '512x512',
-              type: 'image/svg+xml'
+              type: 'image/png'
             }
           ]
         }

@@ -95,11 +95,11 @@ define(['./workbox-7e5eb42b'], (function (workbox) { 'use strict';
     "url": "assets/index-CsznDry-.js",
     "revision": null
   }, {
-    "url": "logo.svg",
-    "revision": "04ab0aa5c21ff53162f25451388d3985"
+    "url": "icon.png",
+    "revision": "ffe18f5c76f87ac0bb8c2fd93921b309"
   }, {
     "url": "manifest.webmanifest",
-    "revision": "6d7a72c938c568f0854adea667013e80"
+    "revision": "73f55f6e44d4060af1eea312bac918fb"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html")));

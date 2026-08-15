@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">TT Laundry</string>
-    <string name="title_activity_main">TT Laundry</string>
+    <string name="app_name">Laundry Tante Tika</string>
+    <string name="title_activity_main">Laundry Tante Tika</string>
     <string name="package_name">com.ttlaundry.app</string>
     <string name="custom_url_scheme">com.ttlaundry.app</string>
 </resources>
