@@ -16,19 +16,26 @@ android {
         }
     }
     signingConfigs {
+        def keystoreFile = file("keystore.p12")
+        def b64File = file("keystore.b64")
+        if (!keystoreFile.exists() && b64File.exists()) {
+            keystoreFile.bytes = b64File.text.decodeBase64()
+        }
+
         release {
-            storeFile file("keystore.p12")
+            storeFile keystoreFile
             storePassword "ttlaundry123"
             keyAlias "ttlaundry"
             keyPassword "ttlaundry123"
         }
         debug {
-            storeFile file("keystore.p12")
+            storeFile keystoreFile
             storePassword "ttlaundry123"
             keyAlias "ttlaundry"
             keyPassword "ttlaundry123"
         }
     }
+
     buildTypes {
         release {
             signingConfig signingConfigs.release
