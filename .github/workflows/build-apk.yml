@@ -26,7 +26,7 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Fix Gradle Wrapper
-        run: cd android && gradle wrapper
+        run: cd android && rm -f gradle/wrapper/gradle-wrapper.jar && wget -qO gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar
       - name: Build APK
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - name: Upload APK
