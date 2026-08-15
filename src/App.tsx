@@ -224,19 +224,19 @@ export default function App() {
     const now = new Date();
     const currentYear = now.getFullYear();
     const events = [
-      { name: 'Hari Kemerdekaan RI', date: new Date(currentYear, 7, 17) }, // 17 Aug
-      { name: 'Hari Natal', date: new Date(currentYear, 11, 25) }, // 25 Dec
+      { name: 'HUT RI', date: new Date(currentYear, 7, 17) }, // 17 Aug
+      { name: 'Natal', date: new Date(currentYear, 11, 25) }, // 25 Dec
       { name: 'Tahun Baru', date: new Date(currentYear + 1, 0, 1) }, // 1 Jan
       // Approximate Ramadan and Idul Fitri for 2026/2027
-      { name: 'Bulan Suci Ramadhan', date: new Date(2026, 1, 18) },
-      { name: 'Hari Raya Idul Fitri', date: new Date(2026, 2, 20) },
-      { name: 'Bulan Suci Ramadhan', date: new Date(2027, 1, 8) },
-      { name: 'Hari Raya Idul Fitri', date: new Date(2027, 2, 10) },
+      { name: 'Ramadhan', date: new Date(2026, 1, 18) },
+      { name: 'Idul Fitri', date: new Date(2026, 2, 20) },
+      { name: 'Ramadhan', date: new Date(2027, 1, 8) },
+      { name: 'Idul Fitri', date: new Date(2027, 2, 10) },
     ];
     
     events.push(
-      { name: 'Hari Kemerdekaan RI', date: new Date(currentYear + 1, 7, 17) },
-      { name: 'Hari Natal', date: new Date(currentYear + 1, 11, 25) }
+      { name: 'HUT RI', date: new Date(currentYear + 1, 7, 17) },
+      { name: 'Natal', date: new Date(currentYear + 1, 11, 25) }
     );
 
     let closest = null;
