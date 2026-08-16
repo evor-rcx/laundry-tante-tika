@@ -13,7 +13,9 @@ import {
   User,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ShoppingBag
 } from 'lucide-react';
 
 // Types
@@ -35,21 +37,25 @@ interface CustomerInfo {
 
 const SERVICES_CATALOG = [
   { group: 'KILOAN', items: [
-    { name: 'SETRIKA', price: 5000, unit: 'kg' },
-    { name: 'CUCI + SETRIKA', price: 7000, unit: 'kg' },
-    { name: 'CUCI + LIPAT', price: 5000, unit: 'kg' },
+    { name: 'SETRIKA (KILOAN)', price: 5000, unit: 'kg' },
+    { name: 'CUCI + SETRIKA (KILOAN)', price: 7000, unit: 'kg' },
+    { name: 'CUCI + LIPAT (KILOAN)', price: 5000, unit: 'kg' },
   ]},
   { group: 'SEPRAI/SELIMUT/GORDEN', items: [
-    { name: 'CUCI+LIPAT (KECIL)', price: 8000, unit: 'bj' },
-    { name: 'SETRIKA (KECIL)', price: 8000, unit: 'bj' },
-    { name: 'CUCI+SETRIKA (KECIL)', price: 10000, unit: 'bj' },
-    { name: 'CUCI+LIPAT (BESAR)', price: 10000, unit: 'bj' },
-    { name: 'SETRIKA (BESAR)', price: 10000, unit: 'bj' },
-    { name: 'CUCI+SETRIKA (BESAR)', price: 12000, unit: 'bj' },
+    { name: 'SEPRAI/SELIMUT/GORDEN - CUCI+LIPAT (KECIL)', price: 8000, unit: 'bj' },
+    { name: 'SEPRAI/SELIMUT/GORDEN - SETRIKA (KECIL)', price: 8000, unit: 'bj' },
+    { name: 'SEPRAI/SELIMUT/GORDEN - CUCI+SETRIKA (KECIL)', price: 10000, unit: 'bj' },
+    { name: 'SEPRAI/SELIMUT/GORDEN - CUCI+LIPAT (BESAR)', price: 10000, unit: 'bj' },
+    { name: 'SEPRAI/SELIMUT/GORDEN - SETRIKA (BESAR)', price: 10000, unit: 'bj' },
+    { name: 'SEPRAI/SELIMUT/GORDEN - CUCI+SETRIKA (BESAR)', price: 12000, unit: 'bj' },
   ]},
   { group: 'BED COVER', items: [
-    { name: 'BC CUCI LIPAT', price: 20000, unit: 'bj' },
-    { name: 'BC CUCI SETRIKA', price: 25000, unit: 'bj' },
+    { name: 'BED COVER - CUCI LIPAT (KECIL)', price: 15000, unit: 'bj' },
+    { name: 'BED COVER - CUCI LIPAT (BESAR)', price: 20000, unit: 'bj' },
+    { name: 'BED COVER - CUCI SETRIKA (KECIL)', price: 20000, unit: 'bj' },
+    { name: 'BED COVER - CUCI SETRIKA (BESAR)', price: 25000, unit: 'bj' },
+    { name: 'BED COVER - SETRIKA (KECIL)', price: 15000, unit: 'bj' },
+    { name: 'BED COVER - SETRIKA (BESAR)', price: 20000, unit: 'bj' },
   ]},
   { group: 'LAINNYA', items: [
     { name: 'SEPATU', price: 15000, unit: 'psg' },
@@ -193,6 +199,7 @@ export default function App() {
   const [bleCharacteristic, setBleCharacteristic] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const [isOnline, setIsOnline] = useState(true);
+  const [showServiceModal, setShowServiceModal] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -286,21 +293,7 @@ export default function App() {
       subtotal: serviceDef.price * qty
     };
 
-    setCart(prev => {
-      const existingIdx = prev.findIndex(item => item.name === serviceDef.name && item.price === serviceDef.price);
-      if (existingIdx >= 0) {
-        const newCart = [...prev];
-        const existing = newCart[existingIdx];
-        const newQty = existing.qty + qty;
-        newCart[existingIdx] = {
-          ...existing,
-          qty: newQty,
-          subtotal: existing.price * newQty
-        };
-        return newCart;
-      }
-      return [...prev, newItem];
-    });
+    setCart(prev => [...prev, newItem]);
     setInputQty('');
     setSelectedServiceIndex(-1);
   };
@@ -422,20 +415,40 @@ export default function App() {
         targetChar = '00002af1-0000-1000-8000-00805f9b34fb';
       }
 
+      // Format Waktu agar lebih singkat di kertas
+      let printTime = currentTime.replace(' pukul ', ' ').substring(0, 32);
+      
       let text = "\x1B\x40\x1B\x61\x01\x1B\x45\x01LAUNDRY TANTE TIKA\n\x1B\x45\x00";
       text += "Jl. Zamrud Depan Gg. Zamrud 2\nRT 42, Bontang Selatan\n";
-      text += "WA: +62 851-6994-9219\n";
+      text += "WA: +62 851-6994-9219\n\n";
+      
+      // Pembatas putus-putus 32 karakter (standar 58mm printer)
       text += "--------------------------------\n\x1B\x61\x00";
-      text += "Nota : #LT-" + notaId + "\n";
-      text += "Tgl  : " + currentTime + "\n";
-      text += "Nama : " + (customer.name || "-") + "\n";
-      text += "Alm  : " + (customer.address || "-") + "\n";
-      text += "WA   : " + (customer.phone || "-") + "\n";
+      
+      // Fungsi untuk memastikan teks rata kiri dengan padding
+      const padR = (str, len) => (str || "-").substring(0, len).padEnd(len, ' ');
+      
+      text += padR("Nota : #LT-" + notaId, 32) + "\n";
+      text += padR("Tgl  : " + printTime, 32) + "\n";
+      text += padR("Nama : " + customer.name, 32) + "\n";
+      text += padR("Alm  : " + customer.address, 32) + "\n";
+      text += padR("WA   : " + customer.phone, 32) + "\n";
       text += "--------------------------------\n";
 
       cart.forEach(i => {
-        text += i.name + "\n";
-        text += i.qty + " " + i.unit.toUpperCase() + " x Rp " + i.price.toLocaleString() + " = Rp " + i.subtotal.toLocaleString() + "\n";
+        // Nama layanan
+        text += padR(i.name, 32) + "\n";
+        
+        // Rincian (QTY x Harga = Subtotal)
+        let qtyText = i.qty + " " + i.unit.toUpperCase();
+        let priceText = "Rp " + i.price.toLocaleString();
+        let subtotalText = "Rp " + i.subtotal.toLocaleString();
+        
+        let detailLine = qtyText + " x " + priceText;
+        let spacesNeeded = 32 - detailLine.length - subtotalText.length - 3; // " = " = 3 chars
+        if (spacesNeeded < 0) spacesNeeded = 0;
+        
+        text += detailLine + " = " + " ".repeat(spacesNeeded) + subtotalText + "\n";
       });
 
       text += "--------------------------------\n";
@@ -655,22 +668,17 @@ ${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `              *${upcomin
             <CheckCircle2 size={14} className="text-slate-400" />
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pilih Layanan</h3>
           </div>
-          <select 
-            value={selectedServiceIndex}
-            onChange={e => setSelectedServiceIndex(parseInt(e.target.value))}
-            className="w-full p-4 bg-slate-900 text-white border-none rounded-2xl font-bold uppercase text-xs outline-none cursor-pointer"
+          <button 
+            onClick={() => setShowServiceModal(true)}
+            className="w-full p-4 bg-slate-900 text-white border-none rounded-2xl font-bold uppercase text-[11px] outline-none flex justify-between items-center transition-all btn-press"
           >
-            <option value="-1">-- PILIH LAYANAN --</option>
-            {SERVICES_CATALOG.map((group, gIdx) => (
-              <optgroup key={gIdx} label={group.group}>
-                {group.items.map((item, iIdx) => (
-                  <option key={iIdx} value={flatServices.indexOf(item)}>
-                    {item.name} (Rp {item.price.toLocaleString()}/{item.unit})
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            <span className="flex-1 text-left truncate pr-4">
+              {selectedServiceIndex === -1
+                ? '-- PILIH LAYANAN --'
+                : flatServices[selectedServiceIndex].name}
+            </span>
+            <ChevronDown size={16} className="text-slate-400 shrink-0" />
+          </button>
           <div className="flex gap-3">
             <input 
               type="number"
@@ -999,6 +1007,82 @@ ${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `              *${upcomin
             </motion.div>
           </motion.div>
         )}
+
+        {/* Service Picker Modal */}
+        {showServiceModal && (
+          <motion.div
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[300] bg-slate-900 flex flex-col"
+          >
+            <div className="p-6 pb-4 flex justify-between items-center border-b border-slate-800 shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-white mb-1">Pilih Layanan</h2>
+                <p className="text-xs text-slate-400">Silakan pilih layanan laundry Anda</p>
+              </div>
+              <button
+                onClick={() => setShowServiceModal(false)}
+                className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 btn-press"
+              >
+                <ShoppingBag size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {SERVICES_CATALOG.map((group, gIdx) => (
+                <div key={gIdx} className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 border-t border-slate-800"></div>
+                    <span className="text-[10px] font-black text-slate-500 tracking-widest uppercase">{group.group}</span>
+                    <div className="flex-1 border-t border-slate-800"></div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {group.items.map((item, iIdx) => {
+                      const flatIndex = flatServices.indexOf(item);
+                      const isSelected = selectedServiceIndex === flatIndex;
+                      const displayName = item.name
+                        .replace(' (KILOAN)', '')
+                        .replace('SEPRAI/SELIMUT/GORDEN - ', '')
+                        .replace('BED COVER - ', '');
+
+                      return (
+                        <div
+                          key={iIdx}
+                          onClick={() => {
+                            setSelectedServiceIndex(flatIndex);
+                            setShowServiceModal(false);
+                          }}
+                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                            isSelected
+                              ? 'border-blue-500 bg-blue-500/10'
+                              : 'border-slate-800 bg-slate-800/50 hover:bg-slate-800'
+                          }`}
+                        >
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-bold text-white">{displayName}</h4>
+                            <div className="inline-block px-3 py-1 bg-slate-900 rounded-full border border-slate-700">
+                              <span className="text-xs font-bold text-blue-400">Rp {item.price.toLocaleString()}</span>
+                              <span className="text-xs font-medium text-slate-400"> / {item.unit}</span>
+                            </div>
+                          </div>
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            isSelected ? 'border-blue-500' : 'border-slate-600'
+                          }`}>
+                            {isSelected && <div className="w-3 h-3 rounded-full bg-blue-500" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
       </AnimatePresence>
     </div>
   );
