@@ -504,26 +504,29 @@ export default function App() {
 
     let detailLayanan = "";
     cart.forEach(i => {
-      detailLayanan += `LAYANAN     : ${i.name.toUpperCase()}\nBERAT       : ${i.qty} ${i.unit.toUpperCase()}\n----------------------------------------------------------------------\n`;
+      detailLayanan += `▪️ *${i.name.toUpperCase()}*\n   ${i.qty} ${i.unit.toUpperCase()} x Rp ${i.price.toLocaleString()} = Rp ${i.subtotal.toLocaleString()}\n`;
     });
 
     const text = `*LAUNDRY TANTE TIKA*
-Jl. Zamrud Depan Gg. Zamrud 2 RT 42
-Bontang Selatan, Bontang
-No. WA: +62 851-6994-9219
-_Nota Digital #LT-${notaId}_
-----------------------------------------------------------------------
-WAKTU       : ${currentTime}
-PELANGGAN   : ${customer.name.toUpperCase() || '-'}
-ALAMAT      : ${customer.address.toUpperCase() || '-'}
-WA          : ${customer.phone}
-----------------------------------------------------------------------
-${detailLayanan}STATUS      : *${customer.status}*
-AMBIL/ANTAR : ${customer.delivery}
-TOTAL BAYAR : Rp ${total.toLocaleString()}
-----------------------------------------------------------------------
-              "PAKAIAN BERSIH, HATI SENANG"
-${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `              *${upcomingEventText}*` : ''}`;
+Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan
+WA: 0851-6994-9219
+
+_Nota #LT-${notaId}_
+🗓️ *Waktu:* ${currentTime.replace(' pukul ', ' ')}
+
+👤 *Nama:* ${customer.name.toUpperCase() || '-'}
+📍 *Alamat:* ${customer.address.toUpperCase() || '-'}
+
+📦 *RINCIAN PESANAN:*
+${detailLayanan}
+➖➖➖➖➖➖➖➖➖➖
+💳 *TOTAL:* *Rp ${total.toLocaleString()}*
+🏷️ *STATUS:* *${customer.status}*
+🚚 *PENGIRIMAN:* ${customer.delivery}
+➖➖➖➖➖➖➖➖➖➖
+
+_"PAKAIAN BERSIH, HATI SENANG"_
+${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `*${upcomingEventText}*` : ''}`;
 
     let cleanPhone = customer.phone.replace(/[^0-9]/g, '');
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
