@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
+import html2canvas from 'html2canvas';
 import { 
   Printer, 
   Send, 
@@ -15,7 +16,13 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronDown,
-  ShoppingBag
+  ShoppingBag,
+  Share2,
+  Image as ImageIcon,
+  Download,
+  MessageCircle,
+  FileText,
+  Calendar
 } from 'lucide-react';
 
 // Types
@@ -200,6 +207,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const [isOnline, setIsOnline] = useState(true);
   const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showWAModal, setShowWAModal] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -230,68 +239,113 @@ export default function App() {
   const upcomingEventText = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const currentYear = now.getFullYear();
 
-    const holidays = [
+    // Daftar Hari Besar & Peringatan Nasional Resmi Indonesia (Tanggal Tetap)
+    const fixedHolidays = [
+      { name: 'Tahun Baru Masehi', m: 0, d: 1 },
+      { name: 'Hari Pers Nasional', m: 1, d: 9 },
+      { name: 'Hari Peduli Sampah Nasional', m: 1, d: 21 },
+      { name: 'Hari Musik Nasional', m: 2, d: 9 },
+      { name: 'Hari Air Sedunia', m: 2, d: 22 },
+      { name: 'Hari Kesehatan Dunia', m: 3, d: 7 },
+      { name: 'Hari Kartini', m: 3, d: 21 },
+      { name: 'Hari Bumi', m: 3, d: 22 },
+      { name: 'Hari Buruh Internasional', m: 4, d: 1 },
+      { name: 'Hari Pendidikan Nasional', m: 4, d: 2 },
+      { name: 'Hari Kebangkitan Nasional', m: 4, d: 20 },
+      { name: 'Hari Lahir Pancasila', m: 5, d: 1 },
+      { name: 'Hari Lingkungan Hidup', m: 5, d: 5 },
+      { name: 'Hari Bhayangkara', m: 6, d: 1 },
+      { name: 'Hari Anak Nasional', m: 6, d: 23 },
+      { name: 'Hari Pramuka', m: 7, d: 14 },
+      { name: 'HUT Kemerdekaan RI', m: 7, d: 17 },
+      { name: 'Hari Maritim Nasional', m: 7, d: 21 },
+      { name: 'Hari Palang Merah Indonesia', m: 8, d: 17 },
+      { name: 'Hari Tani Nasional', m: 8, d: 24 },
+      { name: 'Hari Kesaktian Pancasila', m: 9, d: 1 },
+      { name: 'Hari Batik Nasional', m: 9, d: 2 },
+      { name: 'Hari TNI', m: 9, d: 5 },
+      { name: 'Hari Santri Nasional', m: 9, d: 22 },
+      { name: 'Hari Sumpah Pemuda', m: 9, d: 28 },
+      { name: 'Hari Pahlawan', m: 10, d: 10 },
+      { name: 'Hari Ayah Nasional', m: 10, d: 12 },
+      { name: 'Hari Guru Nasional', m: 10, d: 25 },
+      { name: 'Hari KORPRI', m: 10, d: 29 },
+      { name: 'Hari Hak Asasi Manusia', m: 11, d: 10 },
+      { name: 'Hari Ibu', m: 11, d: 22 },
+      { name: 'Hari Raya Natal', m: 11, d: 25 },
+    ];
+
+    // Daftar Hari Libur & Hari Besar Keagamaan Nasional (Moving Holidays)
+    const movingHolidays = [
       // 2024
-      { name: 'Tahun Baru', date: new Date(2024, 0, 1) },
       { name: 'Isra Mikraj', date: new Date(2024, 1, 8) },
       { name: 'Tahun Baru Imlek', date: new Date(2024, 1, 10) },
       { name: 'Hari Suci Nyepi', date: new Date(2024, 2, 11) },
       { name: 'Wafat Yesus Kristus', date: new Date(2024, 2, 29) },
       { name: 'Hari Paskah', date: new Date(2024, 2, 31) },
-      { name: 'Idul Fitri', date: new Date(2024, 3, 10) },
-      { name: 'Idul Fitri', date: new Date(2024, 3, 11) },
-      { name: 'Hari Buruh Internasional', date: new Date(2024, 4, 1) },
+      { name: 'Hari Raya Idul Fitri', date: new Date(2024, 3, 10) },
+      { name: 'Hari Raya Idul Fitri', date: new Date(2024, 3, 11) },
       { name: 'Kenaikan Yesus Kristus', date: new Date(2024, 4, 9) },
       { name: 'Hari Raya Waisak', date: new Date(2024, 4, 23) },
-      { name: 'Hari Lahir Pancasila', date: new Date(2024, 5, 1) },
-      { name: 'Idul Adha', date: new Date(2024, 5, 17) },
+      { name: 'Hari Raya Idul Adha', date: new Date(2024, 5, 17) },
       { name: 'Tahun Baru Islam', date: new Date(2024, 6, 7) },
-      { name: 'HUT Kemerdekaan RI', date: new Date(2024, 7, 17) },
       { name: 'Maulid Nabi Muhammad SAW', date: new Date(2024, 8, 16) },
-      { name: 'Hari Raya Natal', date: new Date(2024, 11, 25) },
+
       // 2025
-      { name: 'Tahun Baru', date: new Date(2025, 0, 1) },
       { name: 'Isra Mikraj', date: new Date(2025, 0, 27) },
       { name: 'Tahun Baru Imlek', date: new Date(2025, 0, 29) },
       { name: 'Hari Suci Nyepi', date: new Date(2025, 2, 29) },
-      { name: 'Idul Fitri', date: new Date(2025, 2, 31) },
-      { name: 'Idul Fitri', date: new Date(2025, 3, 1) },
+      { name: 'Hari Raya Idul Fitri', date: new Date(2025, 2, 31) },
+      { name: 'Hari Raya Idul Fitri', date: new Date(2025, 3, 1) },
       { name: 'Wafat Yesus Kristus', date: new Date(2025, 3, 18) },
       { name: 'Hari Paskah', date: new Date(2025, 3, 20) },
-      { name: 'Hari Buruh Internasional', date: new Date(2025, 4, 1) },
       { name: 'Hari Raya Waisak', date: new Date(2025, 4, 12) },
       { name: 'Kenaikan Yesus Kristus', date: new Date(2025, 4, 29) },
-      { name: 'Hari Lahir Pancasila', date: new Date(2025, 5, 1) },
-      { name: 'Idul Adha', date: new Date(2025, 5, 6) },
+      { name: 'Hari Raya Idul Adha', date: new Date(2025, 5, 6) },
       { name: 'Tahun Baru Islam', date: new Date(2025, 5, 27) },
-      { name: 'HUT Kemerdekaan RI', date: new Date(2025, 7, 17) },
       { name: 'Maulid Nabi Muhammad SAW', date: new Date(2025, 8, 5) },
-      { name: 'Hari Raya Natal', date: new Date(2025, 11, 25) },
+
       // 2026
-      { name: 'Tahun Baru', date: new Date(2026, 0, 1) },
       { name: 'Isra Mikraj', date: new Date(2026, 0, 16) },
       { name: 'Tahun Baru Imlek', date: new Date(2026, 1, 17) },
       { name: 'Hari Suci Nyepi', date: new Date(2026, 2, 19) },
-      { name: 'Idul Fitri', date: new Date(2026, 2, 21) },
-      { name: 'Idul Fitri', date: new Date(2026, 2, 22) },
+      { name: 'Hari Raya Idul Fitri', date: new Date(2026, 2, 21) },
+      { name: 'Hari Raya Idul Fitri', date: new Date(2026, 2, 22) },
       { name: 'Wafat Yesus Kristus', date: new Date(2026, 3, 3) },
       { name: 'Hari Paskah', date: new Date(2026, 3, 5) },
-      { name: 'Hari Buruh Internasional', date: new Date(2026, 4, 1) },
       { name: 'Kenaikan Yesus Kristus', date: new Date(2026, 4, 14) },
-      { name: 'Idul Adha', date: new Date(2026, 4, 27) },
+      { name: 'Hari Raya Idul Adha', date: new Date(2026, 4, 27) },
       { name: 'Hari Raya Waisak', date: new Date(2026, 4, 31) },
-      { name: 'Hari Lahir Pancasila', date: new Date(2026, 5, 1) },
       { name: 'Tahun Baru Islam', date: new Date(2026, 5, 16) },
-      { name: 'HUT Kemerdekaan RI', date: new Date(2026, 7, 17) },
       { name: 'Maulid Nabi Muhammad SAW', date: new Date(2026, 7, 25) },
-      { name: 'Hari Raya Natal', date: new Date(2026, 11, 25) }
+
+      // 2027
+      { name: 'Isra Mikraj', date: new Date(2027, 1, 5) },
+      { name: 'Tahun Baru Imlek', date: new Date(2027, 1, 6) },
+      { name: 'Hari Suci Nyepi', date: new Date(2027, 2, 8) },
+      { name: 'Hari Raya Idul Fitri', date: new Date(2027, 2, 10) },
+      { name: 'Wafat Yesus Kristus', date: new Date(2027, 2, 26) },
+      { name: 'Kenaikan Yesus Kristus', date: new Date(2027, 4, 6) },
+      { name: 'Hari Raya Idul Adha', date: new Date(2027, 4, 17) },
+      { name: 'Hari Raya Waisak', date: new Date(2027, 4, 20) },
+      { name: 'Tahun Baru Islam', date: new Date(2027, 5, 6) },
+      { name: 'Maulid Nabi Muhammad SAW', date: new Date(2027, 7, 15) },
     ];
 
-    let closest = null;
+    const allEvents = [...movingHolidays];
+    // Masukkan tanggal-tanggal peringatan nasional tetap untuk tahun berjalan dan sekitarnya
+    for (let y = currentYear - 1; y <= currentYear + 2; y++) {
+      for (const h of fixedHolidays) {
+        allEvents.push({ name: h.name, date: new Date(y, h.m, h.d) });
+      }
+    }
+
+    let closest: { name: string; date: Date; daysLeft: number } | null = null;
     let minDiff = Infinity;
 
-    for (const event of holidays) {
+    for (const event of allEvents) {
       const diffTime = event.date.getTime() - today.getTime();
       const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
       
@@ -303,14 +357,12 @@ export default function App() {
 
     if (closest) {
       if (closest.daysLeft === 0) {
-        return `Selamat memperingati ${closest.name}! 🎉`;
-      } else if (closest.daysLeft <= 60) {
-        // Tampilkan format persis kyk di web biar sama
-        return `${closest.name} (${closest.daysLeft} hari lagi)`;
+        return `Selamat Memperingati ${closest.name}! 🎉`;
       }
+      return `${closest.name} (${closest.daysLeft} hari lagi)`;
     }
     
-    return 'Pakaian Bersih Hati Senang';
+    return 'Pakaian Bersih, Hati Senang';
   }, []);
 
   const showModal = (title: string, message: string) => {
@@ -540,7 +592,130 @@ export default function App() {
     }
   };
 
-  const handleWA = () => {
+  const generateNotaImageBlob = async (): Promise<Blob | null> => {
+    const notaElement = document.getElementById('notaBox');
+    if (!notaElement) return null;
+
+    const canvas = await html2canvas(notaElement, {
+      scale: 3, // Kualitas HD tajam & jernih
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      ignoreElements: (el) => el.classList.contains('no-print-img'),
+      logging: false,
+    });
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/png');
+    });
+  };
+
+  const handleShareImageWA = async () => {
+    if (cart.length === 0) {
+      showModal("Gagal", "Layanan harus diisi sebelum mengirim nota!");
+      return;
+    }
+
+    try {
+      setIsCapturing(true);
+      const blob = await generateNotaImageBlob();
+      if (!blob) {
+        showModal("Gagal", "Gagal memproses gambar nota.");
+        return;
+      }
+
+      const fileName = `Nota-Laundry-LT-${notaId}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+
+      // Cek apakah browser / perangkat mendukung Web Share API file sharing
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: `Nota Laundry Tante Tika #LT-${notaId}`,
+            text: `Halo kak ${customer.name.toUpperCase() || 'Pelanggan'}, berikut gambar nota pesanan Laundry Tante Tika (#LT-${notaId}). Total: Rp ${total.toLocaleString()}`
+          });
+          setShowWAModal(false);
+          saveToHistory();
+          resetForm();
+          showModal("Berhasil", "Gambar nota berhasil dibagikan dan transaksi disimpan di riwayat.");
+          return;
+        } catch (shareErr: any) {
+          if (shareErr.name === 'AbortError') {
+            return; // Pengguna membatalkan share sheet
+          }
+          console.warn("Share fallback:", shareErr);
+        }
+      }
+
+      // Fallback untuk browser yang belum support direct file share (misal Chrome Desktop):
+      // 1. Download gambar nota otomatis ke perangkat
+      const imgUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = imgUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // 2. Buka WhatsApp chat
+      let cleanPhone = customer.phone ? customer.phone.replace(/[^0-9]/g, '') : '';
+      if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
+
+      const caption = `Halo kak *${customer.name.toUpperCase() || 'Pelanggan'}*, terima kasih sudah mempercayakan pakaiannya di *Laundry Tante Tika*!\n\n📄 *No. Nota:* #LT-${notaId}\n💳 *Total:* Rp ${total.toLocaleString()} (*${customer.status}*)\n🗓️ *Waktu:* ${currentTime.replace(' pukul ', ' ')}\n\n_(Foto/Gambar nota otomatis tersimpan di perangkat Anda. Silakan lampirkan gambar nota tersebut ke chat ini.)_\n\n*Pakaian Bersih, Hati Senang*\n*${upcomingEventText}*`;
+
+      if (cleanPhone) {
+        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(caption)}`, '_blank');
+      }
+
+      setShowWAModal(false);
+      saveToHistory();
+      resetForm();
+      showModal("Gambar Nota Siap", "Foto nota telah otomatis diunduh ke galeri/HP Anda. WhatsApp dibuka, silakan lampirkan gambar nota tersebut ke chat pelanggan!");
+    } catch (err: any) {
+      console.error(err);
+      showModal("Gagal", `Terjadi kesalahan saat memproses gambar nota: ${err?.message || err}`);
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    if (cart.length === 0) {
+      showModal("Gagal", "Layanan harus diisi terlebih dahulu!");
+      return;
+    }
+
+    try {
+      setIsCapturing(true);
+      const blob = await generateNotaImageBlob();
+      if (!blob) {
+        showModal("Gagal", "Gagal memproses gambar nota.");
+        return;
+      }
+
+      const fileName = `Nota-Laundry-LT-${notaId}.png`;
+      const imgUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = imgUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setShowWAModal(false);
+      showModal("Berhasil Diunduh", `File foto nota (${fileName}) telah tersimpan di galeri/perangkat Anda.`);
+    } catch (err: any) {
+      console.error(err);
+      showModal("Gagal", "Gagal mengunduh gambar nota.");
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
+  const handleSendTextWA = () => {
     if (!customer.phone || cart.length === 0) {
       showModal("Gagal", "Nomor WA dan layanan harus diisi!");
       return;
@@ -570,14 +745,23 @@ ${detailLayanan}
 ➖➖➖➖➖➖➖➖➖➖
 
 _"PAKAIAN BERSIH, HATI SENANG"_
-${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `*${upcomingEventText}*` : ''}`;
+*${upcomingEventText}*`;
 
     let cleanPhone = customer.phone.replace(/[^0-9]/g, '');
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
+    setShowWAModal(false);
     saveToHistory();
     resetForm();
-    showModal("Berhasil", "Nota telah diteruskan ke WhatsApp dan transaksi disimpan di riwayat.");
+    showModal("Berhasil", "Nota teks telah diteruskan ke WhatsApp dan transaksi disimpan di riwayat.");
+  };
+
+  const handleWA = () => {
+    if (cart.length === 0) {
+      showModal("Gagal", "Layanan harus diisi sebelum mengirim nota!");
+      return;
+    }
+    setShowWAModal(true);
   };
 
   return (
@@ -750,14 +934,14 @@ ${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `*${upcomingEventText}*` 
         {/* Preview Nota */}
         <motion.div 
           layout
-          className="nota-container overflow-hidden mx-auto max-w-sm"
+          className="nota-container overflow-hidden mx-auto max-w-sm bg-white"
           id="notaBox"
         >
           <div className="p-10 text-center relative bg-[#fdfbf7]">
             <div className="absolute top-6 right-8 font-black text-[10px] text-orange-800 bg-orange-100 px-3 py-1 rounded-full">
               #LT-{notaId}
             </div>
-            <img src={LOGO_URL} className="w-20 h-20 mx-auto mb-4 object-contain" alt="Logo" />
+            <img src={LOGO_URL} crossOrigin="anonymous" className="w-20 h-20 mx-auto mb-4 object-contain" alt="Logo" />
             <h2 className="text-xl font-black text-slate-800 uppercase leading-none">Laundry Tante Tika</h2>
             <div className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-2 space-y-0.5">
               <p>Jl. Zamrud Depan Gg. Zamrud 2 RT 42</p>
@@ -775,8 +959,8 @@ ${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `*${upcomingEventText}*` 
                    <p className="text-[8px] font-bold text-slate-400 uppercase italic">{customer.address || '-'}</p>
                 </div>
               </div>
-              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                customer.status === 'LUNAS' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'
+              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${
+                customer.status === 'LUNAS' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'
               }`}>
                 {customer.status}
               </div>
@@ -805,7 +989,8 @@ ${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `*${upcomingEventText}*` 
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => removeItem(idx)}
-                            className="text-red-400 hover:text-red-600 transition-colors"
+                            className="no-print-img text-red-400 hover:text-red-600 transition-colors p-0.5"
+                            title="Hapus"
                           >
                             <Trash2 size={10} />
                           </button>
@@ -843,13 +1028,33 @@ ${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `*${upcomingEventText}*` 
             </div>
             
             <div className="flex flex-col gap-2 pt-2">
-              <p className="text-center text-[8px] font-black text-slate-200 tracking-[0.3em] uppercase">Pakaian Bersih Hati Senang</p>
-              <div className="bg-orange-50/50 py-2 rounded-xl text-center">
-                <p className="text-[7.5px] font-black text-orange-500 uppercase tracking-widest">{upcomingEventText}</p>
+              <p className="text-center text-[8px] font-black text-slate-300 tracking-[0.3em] uppercase">Pakaian Bersih Hati Senang</p>
+              <div className="bg-orange-50/80 border border-orange-200/70 py-2.5 px-3 rounded-xl text-center shadow-xs">
+                <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest">{upcomingEventText}</p>
               </div>
             </div>
           </div>
         </motion.div>
+
+        {/* Tombol Cepat Gambar Nota */}
+        <div className="flex items-center justify-center gap-2 max-w-sm mx-auto mt-3">
+          <button
+            onClick={handleShareImageWA}
+            disabled={isCapturing}
+            className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+          >
+            <ImageIcon size={15} />
+            {isCapturing ? 'Memproses Foto...' : 'Kirim Gambar ke WA'}
+          </button>
+          <button
+            onClick={handleDownloadImage}
+            disabled={isCapturing}
+            className="py-3.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs"
+            title="Unduh Foto Nota (PNG)"
+          >
+            <Download size={14} /> Unduh
+          </button>
+        </div>
       </motion.div>
     ) : (
       <motion.div
@@ -1127,6 +1332,103 @@ ${upcomingEventText !== 'Pakaian Bersih Hati Senang' ? `*${upcomingEventText}*` 
                 </div>
               ))}
             </div>
+          </motion.div>
+        )}
+
+        {/* Modal Pilihan Kirim WhatsApp */}
+        {showWAModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-[220] backdrop-blur-sm p-4 sm:p-6"
+          >
+            <motion.div 
+              initial={{ y: 50, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 50, opacity: 0, scale: 0.95 }}
+              className="bg-white p-6 sm:p-8 rounded-t-[2.5rem] sm:rounded-[2.5rem] max-w-sm w-full shadow-2xl space-y-5"
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
+                    <MessageCircle size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm uppercase tracking-wide text-slate-800">Kirim ke WhatsApp</h3>
+                    <p className="text-[10px] font-bold text-slate-400">Pilih format pengiriman nota</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowWAModal(false)}
+                  className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                {/* Opsi 1: Gambar Nota (Rekomendasi) */}
+                <button
+                  onClick={handleShareImageWA}
+                  disabled={isCapturing}
+                  className="w-full p-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl text-left flex items-center gap-4 group shadow-lg shadow-green-500/20 active:scale-[0.98] transition-all"
+                >
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                    <ImageIcon size={22} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-black text-xs uppercase tracking-wider">Kirim Gambar Nota</p>
+                      <span className="px-2 py-0.5 bg-yellow-400 text-slate-900 text-[8px] font-black rounded-full uppercase">Foto</span>
+                    </div>
+                    <p className="text-[10px] text-green-100 mt-0.5 leading-snug">
+                      Bagi foto nota visual resmi ke WhatsApp pelanggan
+                    </p>
+                  </div>
+                </button>
+
+                {/* Opsi 2: Teks WhatsApp */}
+                <button
+                  onClick={handleSendTextWA}
+                  disabled={isCapturing}
+                  className="w-full p-4 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-800 rounded-2xl text-left flex items-center gap-4 group active:scale-[0.98] transition-all"
+                >
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shrink-0 border border-slate-200 text-slate-600">
+                    <FileText size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-xs uppercase tracking-wider text-slate-800">Kirim Format Teks</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                      Kirim rincian nota dalam bentuk teks rapi berformat
+                    </p>
+                  </div>
+                </button>
+
+                {/* Opsi 3: Unduh Foto Nota */}
+                <button
+                  onClick={handleDownloadImage}
+                  disabled={isCapturing}
+                  className="w-full p-3.5 bg-white hover:bg-slate-50 border border-dashed border-slate-300 text-slate-600 rounded-2xl text-left flex items-center gap-3 group active:scale-[0.98] transition-all"
+                >
+                  <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center shrink-0 text-slate-500">
+                    <Download size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[11px] text-slate-700">Simpan / Unduh Gambar (PNG)</p>
+                    <p className="text-[9px] text-slate-400">Simpan foto nota langsung ke galeri HP</p>
+                  </div>
+                </button>
+              </div>
+
+              {isCapturing && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-center">
+                  <p className="text-[10px] font-bold text-blue-600 animate-pulse">
+                    Sedang memproses dan merender foto nota resolusi tinggi...
+                  </p>
+                </div>
+              )}
+            </motion.div>
           </motion.div>
         )}
 
