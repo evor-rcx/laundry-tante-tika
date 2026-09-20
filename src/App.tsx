@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
-import html2canvas from 'html2canvas';
 import { 
   Printer, 
   Send, 
@@ -18,11 +17,10 @@ import {
   ChevronDown,
   ShoppingBag,
   Share2,
-  Image as ImageIcon,
-  Download,
   MessageCircle,
   FileText,
-  Calendar
+  Calendar,
+  Eye
 } from 'lucide-react';
 
 // Types
@@ -70,7 +68,9 @@ const SERVICES_CATALOG = [
   ]},
 ];
 
-const LOGO_URL = "https://i.ibb.co.com/cSRjzF2b/Picsart-26-05-14-16-43-45-055.jpg";
+import { LOGO_DATA } from './logoData';
+
+const LOGO_URL = LOGO_DATA;
 
 export default function App() {
   const [notaId, setNotaId] = useState(() => Math.floor(1000 + Math.random() * 9000));
@@ -207,8 +207,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const [isOnline, setIsOnline] = useState(true);
   const [showServiceModal, setShowServiceModal] = useState(false);
-  const [showWAModal, setShowWAModal] = useState(false);
-  const [isCapturing, setIsCapturing] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -592,132 +590,9 @@ export default function App() {
     }
   };
 
-  const generateNotaImageBlob = async (): Promise<Blob | null> => {
-    const notaElement = document.getElementById('notaBox');
-    if (!notaElement) return null;
-
-    const canvas = await html2canvas(notaElement, {
-      scale: 3, // Kualitas HD tajam & jernih
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      ignoreElements: (el) => el.classList.contains('no-print-img'),
-      logging: false,
-    });
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/png');
-    });
-  };
-
-  const handleShareImageWA = async () => {
+  const handleWA = () => {
     if (cart.length === 0) {
       showModal("Gagal", "Layanan harus diisi sebelum mengirim nota!");
-      return;
-    }
-
-    try {
-      setIsCapturing(true);
-      const blob = await generateNotaImageBlob();
-      if (!blob) {
-        showModal("Gagal", "Gagal memproses gambar nota.");
-        return;
-      }
-
-      const fileName = `Nota-Laundry-LT-${notaId}.png`;
-      const file = new File([blob], fileName, { type: 'image/png' });
-
-      // Cek apakah browser / perangkat mendukung Web Share API file sharing
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: `Nota Laundry Tante Tika #LT-${notaId}`,
-            text: `Halo kak ${customer.name.toUpperCase() || 'Pelanggan'}, berikut gambar nota pesanan Laundry Tante Tika (#LT-${notaId}). Total: Rp ${total.toLocaleString()}`
-          });
-          setShowWAModal(false);
-          saveToHistory();
-          resetForm();
-          showModal("Berhasil", "Gambar nota berhasil dibagikan dan transaksi disimpan di riwayat.");
-          return;
-        } catch (shareErr: any) {
-          if (shareErr.name === 'AbortError') {
-            return; // Pengguna membatalkan share sheet
-          }
-          console.warn("Share fallback:", shareErr);
-        }
-      }
-
-      // Fallback untuk browser yang belum support direct file share (misal Chrome Desktop):
-      // 1. Download gambar nota otomatis ke perangkat
-      const imgUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = imgUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // 2. Buka WhatsApp chat
-      let cleanPhone = customer.phone ? customer.phone.replace(/[^0-9]/g, '') : '';
-      if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
-
-      const caption = `Halo kak *${customer.name.toUpperCase() || 'Pelanggan'}*, terima kasih sudah mempercayakan pakaiannya di *Laundry Tante Tika*!\n\n📄 *No. Nota:* #LT-${notaId}\n💳 *Total:* Rp ${total.toLocaleString()} (*${customer.status}*)\n🗓️ *Waktu:* ${currentTime.replace(' pukul ', ' ')}\n\n_(Foto/Gambar nota otomatis tersimpan di perangkat Anda. Silakan lampirkan gambar nota tersebut ke chat ini.)_\n\n*Pakaian Bersih, Hati Senang*\n*${upcomingEventText}*`;
-
-      if (cleanPhone) {
-        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(caption)}`, '_blank');
-      }
-
-      setShowWAModal(false);
-      saveToHistory();
-      resetForm();
-      showModal("Gambar Nota Siap", "Foto nota telah otomatis diunduh ke galeri/HP Anda. WhatsApp dibuka, silakan lampirkan gambar nota tersebut ke chat pelanggan!");
-    } catch (err: any) {
-      console.error(err);
-      showModal("Gagal", `Terjadi kesalahan saat memproses gambar nota: ${err?.message || err}`);
-    } finally {
-      setIsCapturing(false);
-    }
-  };
-
-  const handleDownloadImage = async () => {
-    if (cart.length === 0) {
-      showModal("Gagal", "Layanan harus diisi terlebih dahulu!");
-      return;
-    }
-
-    try {
-      setIsCapturing(true);
-      const blob = await generateNotaImageBlob();
-      if (!blob) {
-        showModal("Gagal", "Gagal memproses gambar nota.");
-        return;
-      }
-
-      const fileName = `Nota-Laundry-LT-${notaId}.png`;
-      const imgUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = imgUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setShowWAModal(false);
-      showModal("Berhasil Diunduh", `File foto nota (${fileName}) telah tersimpan di galeri/perangkat Anda.`);
-    } catch (err: any) {
-      console.error(err);
-      showModal("Gagal", "Gagal mengunduh gambar nota.");
-    } finally {
-      setIsCapturing(false);
-    }
-  };
-
-  const handleSendTextWA = () => {
-    if (!customer.phone || cart.length === 0) {
-      showModal("Gagal", "Nomor WA dan layanan harus diisi!");
       return;
     }
 
@@ -737,8 +612,7 @@ _Nota #LT-${notaId}_
 📍 *Alamat:* ${customer.address.toUpperCase() || '-'}
 
 📦 *RINCIAN PESANAN:*
-${detailLayanan}
-➖➖➖➖➖➖➖➖➖➖
+${detailLayanan}➖➖➖➖➖➖➖➖➖➖
 💳 *TOTAL:* *Rp ${total.toLocaleString()}*
 🏷️ *STATUS:* *${customer.status}*
 🚚 *PENGIRIMAN:* ${customer.delivery}
@@ -747,21 +621,75 @@ ${detailLayanan}
 _"PAKAIAN BERSIH, HATI SENANG"_
 *${upcomingEventText}*`;
 
-    let cleanPhone = customer.phone.replace(/[^0-9]/g, '');
+    let cleanPhone = customer.phone ? customer.phone.replace(/[^0-9]/g, '') : '';
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
-    setShowWAModal(false);
+
+    if (cleanPhone) {
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
     saveToHistory();
     resetForm();
-    showModal("Berhasil", "Nota teks telah diteruskan ke WhatsApp dan transaksi disimpan di riwayat.");
+    showModal("Berhasil", "Nota telah diteruskan ke WhatsApp dan transaksi disimpan di riwayat.");
   };
 
-  const handleWA = () => {
-    if (cart.length === 0) {
-      showModal("Gagal", "Layanan harus diisi sebelum mengirim nota!");
-      return;
+  const handleConfirmPayment = (record: any, idx: number) => {
+    const customerName = record.customer?.name?.trim() ? record.customer.name.trim().toUpperCase() : 'PELANGGAN';
+    const items = record.cart || record.items || [];
+    
+    let detailLayanan = "";
+    if (items.length > 0) {
+      items.forEach((item: any) => {
+        detailLayanan += `▪️ *${item.name.toUpperCase()}*\n   ${item.qty} ${item.unit.toUpperCase()} x Rp ${item.price.toLocaleString()} = Rp ${(item.price * item.qty).toLocaleString()}\n`;
+      });
+    } else {
+      detailLayanan = `▪️ *TOTAL TAGIHAN:* Rp ${record.total.toLocaleString()}\n`;
     }
-    setShowWAModal(true);
+
+    const message = `*LAUNDRY TANTE TIKA*
+Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan
+WA: 0851-6994-9219
+
+Halo kak *${customerName}*! 👋
+Terima kasih telah mempercayakan pakaiannya di *Laundry Tante Tika*.
+
+✅ *KONFIRMASI PEMBAYARAN LUNAS*
+Kami mengonfirmasikan bahwa pelayanan yang terdaftar pada nota *#LT-${record.id}* sebesar *Rp ${record.total.toLocaleString()}* telah kami terima pembayarannya dan dinyatakan *LUNAS*.
+
+📄 *No. Nota:* #LT-${record.id}
+🗓️ *Waktu Transaksi:* ${record.time}
+👤 *Nama Pelanggan:* ${customerName}
+${record.customer?.phone ? `📱 *No. WhatsApp:* ${record.customer.phone}\n` : ''}${record.customer?.address ? `📍 *Alamat:* ${record.customer.address.toUpperCase()}\n` : ''}🚚 *Pengiriman/Pengambilan:* ${record.customer?.delivery || 'AMBIL SENDIRI'}
+
+📦 *PELAYANAN YANG TELAH DIBAYARKAN:*
+${detailLayanan}➖➖➖➖➖➖➖➖➖➖
+💳 *TOTAL PEMBAYARAN:* *Rp ${record.total.toLocaleString()}*
+🏷️ *STATUS:* *LUNAS* ✅
+➖➖➖➖➖➖➖➖➖➖
+
+Pakaian Anda kini telah diproses dengan bersih, rapi, dan wangi. Terima kasih banyak atas kepercayaan dan kerjasamanya! 🙏🧺✨
+
+_"PAKAIAN BERSIH, HATI SENANG"_
+*${upcomingEventText}*`;
+
+    let cleanPhone = record.customer?.phone ? record.customer.phone.replace(/[^0-9]/g, '') : '';
+    if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
+
+    if (cleanPhone) {
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    }
+
+    // Otomatis hapus riwayat transaksi tadi
+    setHistory(prev => prev.filter((_, i) => i !== idx));
+
+    showModal(
+      "Pembayaran Dikonfirmasi", 
+      `Konfirmasi pembayaran LUNAS untuk kak ${customerName} telah dibuka di WhatsApp, dan data transaksi (#LT-${record.id}) telah otomatis dihapus dari riwayat.`
+    );
   };
 
   return (
@@ -1036,25 +964,7 @@ _"PAKAIAN BERSIH, HATI SENANG"_
           </div>
         </motion.div>
 
-        {/* Tombol Cepat Gambar Nota */}
-        <div className="flex items-center justify-center gap-2 max-w-sm mx-auto mt-3">
-          <button
-            onClick={handleShareImageWA}
-            disabled={isCapturing}
-            className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
-          >
-            <ImageIcon size={15} />
-            {isCapturing ? 'Memproses Foto...' : 'Kirim Gambar ke WA'}
-          </button>
-          <button
-            onClick={handleDownloadImage}
-            disabled={isCapturing}
-            className="py-3.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs"
-            title="Unduh Foto Nota (PNG)"
-          >
-            <Download size={14} /> Unduh
-          </button>
-        </div>
+
       </motion.div>
     ) : (
       <motion.div
@@ -1088,44 +998,110 @@ _"PAKAIAN BERSIH, HATI SENANG"_
                   <p className="text-slate-300 text-xs font-medium">Belum ada riwayat transaksi</p>
                 </div>
               ) : (
-                history.map((record, idx) => (
-                  <div key={`${record.id}-${idx}`} className="bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex justify-between items-center">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-slate-800">#LT-{record.id}</span>
-                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${record.customer.status === 'LUNAS' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
-                          {record.customer.status}
-                        </span>
+                history.map((record, idx) => {
+                  const items = record.cart || record.items || [];
+                  const isLunas = record.customer?.status === 'LUNAS';
+                  return (
+                    <div 
+                      key={`${record.id}-${idx}`} 
+                      className="bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm space-y-3.5 transition-all hover:border-slate-200"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-black text-slate-800 tracking-wide">#LT-{record.id}</span>
+                            <span className={`text-[8px] font-black px-2.5 py-0.5 rounded-full ${isLunas ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60' : 'bg-rose-50 text-rose-600 border border-rose-200/60'}`}>
+                              {record.customer?.status || 'BELUM LUNAS'}
+                            </span>
+                            {record.customer?.delivery && (
+                              <span className="text-[8px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                                {record.customer.delivery}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                            {record.customer?.name?.trim() ? record.customer.name.toUpperCase() : 'PELANGGAN'}
+                          </p>
+                          {record.customer?.phone && (
+                            <p className="text-[9px] font-medium text-slate-400 flex items-center gap-1.5">
+                              <Phone size={10} className="text-slate-400" />
+                              <span>{record.customer.phone}</span>
+                            </p>
+                          )}
+                          <p className="text-[8px] font-medium text-slate-400 flex items-center gap-1">
+                            <Clock size={10} className="text-slate-300" />
+                            <span>{record.time}</span>
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Total Tagihan</span>
+                          <p className="text-sm font-black text-slate-900">Rp {record.total.toLocaleString()}</p>
+                        </div>
                       </div>
-                      <p className="text-xs font-bold text-slate-700 uppercase">{record.customer.name || 'Hamba Allah'}</p>
-                      <p className="text-[8px] font-medium text-slate-400">{record.time}</p>
+
+                      {/* Rincian Layanan yang Terdaftar */}
+                      {items.length > 0 && (
+                        <div className="bg-slate-50/90 rounded-2xl p-3 border border-slate-100 text-[10px] space-y-1.5">
+                          <div className="flex items-center justify-between text-[8px] font-black text-slate-400 uppercase tracking-wider">
+                            <span>Layanan Terdaftar ({items.length})</span>
+                          </div>
+                          <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                            {items.map((it: any, itIdx: number) => (
+                              <div key={itIdx} className="flex justify-between items-center text-slate-600 font-medium">
+                                <span className="truncate pr-2">• {it.name} ({it.qty} {it.unit})</span>
+                                <span className="font-bold text-slate-800 shrink-0">Rp {(it.price * it.qty).toLocaleString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tombol Aksi: Konfirmasi / Lunas */}
+                      <div className="pt-1 flex gap-2 items-center">
+                        <button 
+                          onClick={() => handleConfirmPayment(record, idx)}
+                          className="flex-1 py-3 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm shadow-emerald-600/20 active:scale-[0.98] transition-all"
+                          title="Konfirmasi Lunas, Kirim ke WhatsApp & Hapus Riwayat Otomatis"
+                        >
+                          <CheckCircle2 size={14} className="text-emerald-200" />
+                          <span>Konfirmasi / Lunas</span>
+                          <MessageCircle size={13} className="text-emerald-200" />
+                        </button>
+
+                        <button 
+                          onClick={() => {
+                            setNotaId(record.id); 
+                            setCart(record.cart || record.items || []);
+                            setCustomer(record.customer);
+                            setActiveTab('current');
+                          }}
+                          className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95"
+                          title="Buka Nota"
+                        >
+                          Buka
+                        </button>
+
+                        <button 
+                          onClick={() => { 
+                            setConfirmModal({
+                              title: 'Hapus Transaksi',
+                              message: `Yakin ingin menghapus riwayat transaksi #LT-${record.id}?`,
+                              visible: true,
+                              onConfirm: () => {
+                                setHistory(prev => prev.filter((_, i) => i !== idx));
+                                setConfirmModal(prev => ({ ...prev, visible: false }));
+                              }
+                            });
+                          }} 
+                          className="py-3 px-3 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95"
+                          title="Hapus"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-slate-900">Rp {record.total.toLocaleString()}</p>
-                      <button 
-                        onClick={() => {
-                          setNotaId(record.id); 
-                          setCart(record.cart || record.items || []);
-                          setCustomer(record.customer);
-                          setActiveTab('current');
-                        }}
-                        className="text-[9px] font-black text-blue-600 uppercase mt-1"
-                      >
-                        Buka Nota</button><button onClick={() => { 
-                          setConfirmModal({
-                            title: 'Hapus Transaksi',
-                            message: 'Yakin ingin menghapus riwayat transaksi ini?',
-                            visible: true,
-                            onConfirm: () => {
-                              setHistory(prev => prev.filter((_, i) => i !== idx));
-                              setConfirmModal(prev => ({ ...prev, visible: false }));
-                            }
-                          });
-                        }} className="text-[9px] font-black text-red-500 uppercase mt-1 ml-2">Hapus
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </motion.div>
           )}
@@ -1335,102 +1311,7 @@ _"PAKAIAN BERSIH, HATI SENANG"_
           </motion.div>
         )}
 
-        {/* Modal Pilihan Kirim WhatsApp */}
-        {showWAModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-[220] backdrop-blur-sm p-4 sm:p-6"
-          >
-            <motion.div 
-              initial={{ y: 50, opacity: 0, scale: 0.95 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 50, opacity: 0, scale: 0.95 }}
-              className="bg-white p-6 sm:p-8 rounded-t-[2.5rem] sm:rounded-[2.5rem] max-w-sm w-full shadow-2xl space-y-5"
-            >
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
-                    <MessageCircle size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-sm uppercase tracking-wide text-slate-800">Kirim ke WhatsApp</h3>
-                    <p className="text-[10px] font-bold text-slate-400">Pilih format pengiriman nota</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowWAModal(false)}
-                  className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600"
-                >
-                  <X size={14} />
-                </button>
-              </div>
 
-              <div className="space-y-2.5">
-                {/* Opsi 1: Gambar Nota (Rekomendasi) */}
-                <button
-                  onClick={handleShareImageWA}
-                  disabled={isCapturing}
-                  className="w-full p-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl text-left flex items-center gap-4 group shadow-lg shadow-green-500/20 active:scale-[0.98] transition-all"
-                >
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                    <ImageIcon size={22} className="text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-black text-xs uppercase tracking-wider">Kirim Gambar Nota</p>
-                      <span className="px-2 py-0.5 bg-yellow-400 text-slate-900 text-[8px] font-black rounded-full uppercase">Foto</span>
-                    </div>
-                    <p className="text-[10px] text-green-100 mt-0.5 leading-snug">
-                      Bagi foto nota visual resmi ke WhatsApp pelanggan
-                    </p>
-                  </div>
-                </button>
-
-                {/* Opsi 2: Teks WhatsApp */}
-                <button
-                  onClick={handleSendTextWA}
-                  disabled={isCapturing}
-                  className="w-full p-4 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-800 rounded-2xl text-left flex items-center gap-4 group active:scale-[0.98] transition-all"
-                >
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shrink-0 border border-slate-200 text-slate-600">
-                    <FileText size={20} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-xs uppercase tracking-wider text-slate-800">Kirim Format Teks</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
-                      Kirim rincian nota dalam bentuk teks rapi berformat
-                    </p>
-                  </div>
-                </button>
-
-                {/* Opsi 3: Unduh Foto Nota */}
-                <button
-                  onClick={handleDownloadImage}
-                  disabled={isCapturing}
-                  className="w-full p-3.5 bg-white hover:bg-slate-50 border border-dashed border-slate-300 text-slate-600 rounded-2xl text-left flex items-center gap-3 group active:scale-[0.98] transition-all"
-                >
-                  <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center shrink-0 text-slate-500">
-                    <Download size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-[11px] text-slate-700">Simpan / Unduh Gambar (PNG)</p>
-                    <p className="text-[9px] text-slate-400">Simpan foto nota langsung ke galeri HP</p>
-                  </div>
-                </button>
-              </div>
-
-              {isCapturing && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-center">
-                  <p className="text-[10px] font-bold text-blue-600 animate-pulse">
-                    Sedang memproses dan merender foto nota resolusi tinggi...
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
 
       </AnimatePresence>
     </div>
