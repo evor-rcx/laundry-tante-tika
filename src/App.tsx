@@ -65,6 +65,7 @@ const SERVICES_CATALOG = [
   { group: 'LAINNYA', items: [
     { name: 'SEPATU', price: 15000, unit: 'psg' },
     { name: 'HELM', price: 20000, unit: 'pcs' },
+    { name: 'CUCI KARPET KECIL (UJICOBA)', price: 20000, unit: 'pcs' },
   ]},
 ];
 
