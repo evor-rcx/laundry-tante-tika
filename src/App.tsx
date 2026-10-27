@@ -24,7 +24,8 @@ import {
   Eye,
   Wifi,
   Download,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Save
 } from 'lucide-react';
 
 // Types
@@ -1137,6 +1138,17 @@ export default function App() {
     }
   };
 
+  const handleSaveOnly = () => {
+    if (cart.length === 0) {
+      showModal("Oops!", "Keranjang masih kosong, pilih layanan terlebih dahulu.");
+      return;
+    }
+    const currentId = notaId;
+    saveToHistory();
+    resetForm();
+    showModal("Berhasil Disimpan ✅", `Transaksi #LT-${currentId} telah berhasil dicatat ke Riwayat Transaksi.`);
+  };
+
   const handleWA = async () => {
     if (cart.length === 0) {
       showModal("Gagal", "Layanan harus diisi sebelum mengirim nota!");
@@ -1198,43 +1210,33 @@ _"PAKAIAN BERSIH, HATI SENANG"_
   };
 
   const handleConfirmPayment = async (record: any, idx: number) => {
-    const customerName = record.customer?.name?.trim() ? record.customer.name.trim().toUpperCase() : 'PELANGGAN';
+    const customerName = record.customer?.name?.trim() ? record.customer.name.trim() : 'Pelanggan';
     const items = record.cart || record.items || [];
     
     let detailLayanan = "";
     if (items.length > 0) {
-      items.forEach((item: any) => {
-        detailLayanan += `▪️ *${item.name.toUpperCase()}*\n   ${item.qty} ${item.unit.toUpperCase()} x Rp ${item.price.toLocaleString()} = Rp ${(item.price * item.qty).toLocaleString()}\n`;
-      });
+      detailLayanan = items.map((item: any) => {
+        return `${item.name}\n${item.qty} ${item.unit.toUpperCase()} x Rp ${item.price.toLocaleString()} = Rp ${(item.price * item.qty).toLocaleString()}`;
+      }).join("\n");
     } else {
-      detailLayanan = `▪️ *TOTAL TAGIHAN:* Rp ${record.total.toLocaleString()}\n`;
+      detailLayanan = `Tagihan: Rp ${record.total.toLocaleString()}`;
     }
 
-    const message = `*LAUNDRY TANTE TIKA*
+    const message = `Halo kak ${customerName} 👋
+Nota #LT-${record.id} sudah LUNAS ✅
+
+LAUNDRY TANTE TIKA
 Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan
 WA: 0851-6994-9219
 
-Halo kak *${customerName}*! 👋
-Terima kasih telah mempercayakan pakaiannya di *Laundry Tante Tika*.
+📦 Layanan & Harga:
+${detailLayanan}
+💳 Total: Rp ${record.total.toLocaleString()}
 
-✅ *KONFIRMASI PEMBAYARAN LUNAS*
-Kami mengonfirmasikan bahwa pelayanan yang terdaftar pada nota *#LT-${record.id}* sebesar *Rp ${record.total.toLocaleString()}* telah kami terima pembayarannya dan dinyatakan *LUNAS*.
+Pakaian sudah bersih, rapi, dan wangi. Terima kasih! 🙏🧺✨
 
-📄 *No. Nota:* #LT-${record.id}
-🗓️ *Waktu Transaksi:* ${record.time}
-👤 *Nama Pelanggan:* ${customerName}
-${record.customer?.phone ? `📱 *No. WhatsApp:* ${record.customer.phone}\n` : ''}${record.customer?.address ? `📍 *Alamat:* ${record.customer.address.toUpperCase()}\n` : ''}🚚 *Pengiriman/Pengambilan:* ${record.customer?.delivery || 'AMBIL SENDIRI'}
-
-📦 *PELAYANAN YANG TELAH DIBAYARKAN:*
-${detailLayanan}➖➖➖➖➖➖➖➖➖➖
-💳 *TOTAL PEMBAYARAN:* *Rp ${record.total.toLocaleString()}*
-🏷️ *STATUS:* *LUNAS* ✅
-➖➖➖➖➖➖➖➖➖➖
-
-Pakaian Anda kini telah diproses dengan bersih, rapi, dan wangi. Terima kasih banyak atas kepercayaan dan kerjasamanya! 🙏🧺✨
-
-_"PAKAIAN BERSIH, HATI SENANG"_
-*${upcomingEventText}*`;
+"Pakaian bersih, hati senang"
+${upcomingEventText}`;
 
     let cleanPhone = record.customer?.phone ? record.customer.phone.replace(/[^0-9]/g, '') : '';
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
@@ -1696,29 +1698,33 @@ _"PAKAIAN BERSIH, HATI SENANG"_
       </main>
 
       {/* Nav Bawah */}
-      <footer className="fixed bottom-0 left-0 right-0 p-6 z-[100] glass-nav">
-        <div className="max-w-md mx-auto flex gap-3">
+      <footer className="fixed bottom-0 left-0 right-0 p-5 z-[100] glass-nav">
+        <div className="max-w-md mx-auto flex items-center gap-2 sm:gap-2.5">
           <button 
             onClick={handlePrint}
-            className="w-16 h-16 bg-white/10 text-white rounded-full flex items-center justify-center btn-press border border-white/20 hover:bg-white/20"
+            className="w-14 h-16 bg-white/10 text-white rounded-full flex items-center justify-center btn-press border border-white/20 hover:bg-white/20 shrink-0"
             title="Cetak Nota Termal"
           >
-            <Printer size={24} />
+            <Printer size={22} />
           </button>
           <button 
-            onClick={handlePreviewImageCard}
-            disabled={isGeneratingImage || cart.length === 0}
-            className="w-16 h-16 bg-cyan-600/30 hover:bg-cyan-600/50 text-white rounded-full flex items-center justify-center btn-press border border-cyan-400/40 disabled:opacity-40"
-            title="Pratinjau Nota Gambar"
+            onClick={handleSaveOnly}
+            disabled={cart.length === 0}
+            className="w-16 h-16 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex flex-col items-center justify-center btn-press border border-blue-400/40 shadow-lg shadow-blue-600/25 disabled:opacity-40 shrink-0 transition-all active:scale-95"
+            title="Simpan Transaksi ke Riwayat"
           >
-            <ImageIcon size={22} className="text-cyan-200" />
+            <Save size={20} className="text-white" />
+            <span className="text-[9px] font-black uppercase tracking-wider mt-0.5">Simpan</span>
           </button>
           <button 
             onClick={handleWA}
             disabled={isSendingWA}
-            className="flex-1 h-16 bg-green-500 text-white rounded-full font-black text-xs uppercase tracking-widest btn-press flex items-center justify-center gap-3 shadow-lg shadow-green-500/20 disabled:opacity-60"
+            className="flex-1 h-16 bg-green-500 hover:bg-green-600 text-white rounded-full font-black text-xs uppercase tracking-wider btn-press flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 disabled:opacity-60 transition-all active:scale-95 px-4"
           >
-            <Send size={18} /> {isSendingWA ? 'Mengirim ke Bot STB...' : waBotConfig.enabled ? 'Kirim WA (Bot WiFi)' : 'Kirim WhatsApp'}
+            <Send size={18} className="shrink-0" />
+            <span className="truncate">
+              {isSendingWA ? 'Mengirim...' : waBotConfig.enabled ? 'Kirim WA (Bot WiFi)' : 'Kirim WhatsApp'}
+            </span>
           </button>
         </div>
       </footer>
@@ -1819,7 +1825,12 @@ _"PAKAIAN BERSIH, HATI SENANG"_
         <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-[200] backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-t-[2rem] p-6 max-h-[70vh] flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-black text-sm uppercase tracking-widest">Daftar Pelanggan</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-sm uppercase tracking-widest text-slate-800">Daftar Pelanggan</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                  {savedCustomers.length}
+                </span>
+              </div>
               <button onClick={() => setShowCustomerList(false)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
                 <X size={14} />
               </button>
@@ -1829,18 +1840,44 @@ _"PAKAIAN BERSIH, HATI SENANG"_
             ) : (
               <div className="overflow-y-auto space-y-2">
                 {savedCustomers.map((c: any, i: number) => (
-                  <button
+                  <div
                     key={i}
-                    onClick={() => { setCustomer({ ...customer, name: c.name, phone: c.phone, address: c.address }); setShowCustomerList(false); }}
-                    className="w-full text-left bg-slate-50 rounded-2xl px-4 py-3 flex justify-between items-center"
+                    onClick={() => { 
+                      setCustomer({ ...customer, name: c.name, phone: c.phone, address: c.address }); 
+                      setShowCustomerList(false); 
+                    }}
+                    className="w-full text-left bg-slate-50 hover:bg-slate-100 active:bg-slate-200/80 rounded-2xl px-4 py-3 flex justify-between items-center transition-colors cursor-pointer group"
                   >
-                    <div>
-                      <p className="text-xs font-black text-slate-800 uppercase">{c.name}</p>
-                      <p className="text-[10px] text-slate-400">{c.phone}</p>
-                      <p className="text-[10px] text-slate-400">{c.address}</p>
+                    <div className="pr-2 flex-1">
+                      <p className="text-xs font-black text-slate-800 uppercase group-hover:text-blue-600 transition-colors">{c.name}</p>
+                      {c.phone && <p className="text-[10px] text-slate-400">{c.phone}</p>}
+                      {c.address && <p className="text-[10px] text-slate-400">{c.address}</p>}
                     </div>
-                    <div className="text-blue-500 text-[10px] font-black uppercase">Pilih</div>
-                  </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-blue-600 font-black text-[10px] uppercase px-2.5 py-1.5 rounded-xl bg-blue-50 group-hover:bg-blue-100 transition-colors">
+                        Pilih
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmModal({
+                            title: 'Hapus Pelanggan',
+                            message: `Hapus "${c.name.toUpperCase()}" dari daftar pelanggan tersimpan?`,
+                            visible: true,
+                            onConfirm: () => {
+                              setSavedCustomers((prev: any[]) => prev.filter((_, idx) => idx !== i));
+                              setConfirmModal(prev => ({ ...prev, visible: false }));
+                            }
+                          });
+                        }}
+                        className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-500 flex items-center justify-center transition-colors"
+                        title="Hapus pelanggan ini"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
