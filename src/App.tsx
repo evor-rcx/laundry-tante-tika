@@ -3,6 +3,7 @@ import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
 import { toJpeg } from 'html-to-image';
+import { generateReceiptCardImage } from './utils/receiptCanvas';
 import { 
   Printer, 
   Send, 
@@ -1004,42 +1005,58 @@ export default function App() {
   };
 
   const generateReceiptImage = async (): Promise<string | null> => {
-    if (!receiptCardRef.current) return null;
     try {
-      // Prioritas 1: html-to-image (cepat, akurat, tidak terpotong viewport mobile)
-      const dataUrl = await toJpeg(receiptCardRef.current, {
-        quality: 0.9,
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        cacheBust: true
+      // Prioritas 1: Gunakan HTML5 Canvas 2D Engine (100% instan, tanpa DOM dependency, tidak pernah gagal atau terpotong di HP)
+      const canvasImg = generateReceiptCardImage({
+        notaId,
+        customer,
+        cart,
+        total,
+        time: currentTime,
+        eventText: upcomingEventText
       });
-      if (dataUrl && dataUrl.length > 500) {
-        console.log('Gambar nota sukses dibuat via html-to-image, ukuran base64:', dataUrl.length);
-        return dataUrl;
+      if (canvasImg && canvasImg.length > 500) {
+        console.log('Gambar nota sukses dibuat via Canvas 2D Engine, ukuran base64:', canvasImg.length);
+        return canvasImg;
       }
-    } catch (err1) {
-      console.warn('html-to-image gagal, mencoba fallback html2canvas:', err1);
+    } catch (errCanvas) {
+      console.warn('Canvas generator warning, mencoba fallback:', errCanvas);
     }
 
-    try {
-      // Prioritas 2: Fallback html2canvas
-      const canvas = await html2canvas(receiptCardRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        x: 0,
-        y: 0,
-        width: 450
-      });
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      if (dataUrl && dataUrl.length > 500) {
-        console.log('Gambar nota sukses dibuat via html2canvas, ukuran base64:', dataUrl.length);
-        return dataUrl;
+    if (receiptCardRef.current) {
+      try {
+        // Fallback 1: html-to-image
+        const dataUrl = await toJpeg(receiptCardRef.current, {
+          quality: 0.9,
+          backgroundColor: '#ffffff',
+          pixelRatio: 2,
+          cacheBust: true
+        });
+        if (dataUrl && dataUrl.length > 500) {
+          console.log('Gambar nota sukses dibuat via html-to-image, ukuran base64:', dataUrl.length);
+          return dataUrl;
+        }
+      } catch (err1) {
+        console.warn('html-to-image gagal, mencoba fallback html2canvas:', err1);
       }
-    } catch (err2) {
-      console.warn('Fallback html2canvas juga gagal:', err2);
+
+      try {
+        // Fallback 2: html2canvas
+        const canvas = await html2canvas(receiptCardRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        });
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        if (dataUrl && dataUrl.length > 500) {
+          console.log('Gambar nota sukses dibuat via html2canvas, ukuran base64:', dataUrl.length);
+          return dataUrl;
+        }
+      } catch (err2) {
+        console.warn('Fallback html2canvas juga gagal:', err2);
+      }
     }
     return null;
   };
@@ -1084,6 +1101,7 @@ export default function App() {
             phone: cleanPhone, 
             message: textMessage,
             image: imageBase64 || undefined,
+            imageBase64: imageBase64 || undefined,
             caption: caption || undefined
           }),
           signal: controller.signal

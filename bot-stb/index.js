@@ -15,8 +15,8 @@ const PORT = process.env.PORT || 3005;
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 let sock = null;
 let isConnected = false;
@@ -228,9 +228,10 @@ app.post('/logout', async (req, res) => {
 // Endpoint kirim pesan WA otomatis dari aplikasi Laundry (Teks & Gambar Nota)
 async function handleSendWA(req, res) {
   try {
-    const { phone, message, image, caption } = req.body || {};
+    const { phone, message, image, imageBase64, caption } = req.body || {};
+    const rawImage = image || imageBase64;
 
-    if (!phone || (!message && !image)) {
+    if (!phone || (!message && !rawImage)) {
       return res.status(400).json({
         success: false,
         error: 'Nomor WA (phone) dan isi pesan (message atau image) wajib diisi.'
@@ -252,19 +253,23 @@ async function handleSendWA(req, res) {
       });
     }
 
-    if (image) {
-      const base64Data = String(image).replace(/^data:image\/\w+;base64,/, '');
+    if (rawImage && String(rawImage).length > 100) {
+      const base64Data = String(rawImage).replace(/^data:image\/\w+;base64,/, '');
       const imageBuffer = Buffer.from(base64Data, 'base64');
       const finalCaption = caption || message || '';
 
+      console.log(`📸 [MENGIRIM NOTA GAMBAR] Mengirim gambar (${imageBuffer.length} bytes) ke ${jid}...`);
+
       await sock.sendMessage(jid, {
         image: imageBuffer,
+        mimetype: 'image/jpeg',
         caption: finalCaption
       });
-      console.log(`[TERKIRIM FOTO NOTA] Nota gambar berhasil dikirim ke ${jid}`);
+      console.log(`✅ [TERKIRIM FOTO NOTA] Nota gambar berhasil dikirim ke ${jid}`);
     } else {
+      console.log(`💬 [MENGIRIM TEKS NOTA] Mengirim pesan teks ke ${jid}...`);
       await sock.sendMessage(jid, { text: String(message) });
-      console.log(`[TERKIRIM TEKS NOTA] Pesan teks berhasil dikirim ke ${jid}`);
+      console.log(`✅ [TERKIRIM TEKS NOTA] Pesan teks berhasil dikirim ke ${jid}`);
     }
 
     try {
@@ -273,7 +278,7 @@ async function handleSendWA(req, res) {
 
     return res.json({
       success: true,
-      hasImage: !!image,
+      hasImage: !!(rawImage && String(rawImage).length > 100),
       to: jid.replace('@s.whatsapp.net', ''),
       botNumber: connectedNumber
     });
