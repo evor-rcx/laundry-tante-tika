@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const pino = require('pino');
-const qrcode = require('qrcode-terminal');
 const os = require('os');
+const fs = require('fs');
 const path = require('path');
 const {
   default: makeWASocket,
@@ -20,7 +20,10 @@ app.use(express.json({ limit: '2mb' }));
 let sock = null;
 let isConnected = false;
 let connectedNumber = null;
-let latestQr = null;
+let latestPairingCode = null;
+let isStarting = false;
+
+const authFolder = path.join(__dirname, 'auth_session_laundry');
 
 function getLocalWifiIPs() {
   const interfaces = os.networkInterfaces();
@@ -35,20 +38,27 @@ function getLocalWifiIPs() {
   return ips.length > 0 ? ips : ['127.0.0.1'];
 }
 
-function formatPhoneToJid(phone) {
+function normalizePhoneDigits(phone) {
   let clean = String(phone || '').replace(/[^0-9]/g, '');
-  if (!clean) return null;
+  if (!clean) return '';
   if (clean.startsWith('0')) {
     clean = '62' + clean.substring(1);
   } else if (clean.startsWith('8')) {
     clean = '62' + clean;
   }
-  return `${clean}@s.whatsapp.net`;
+  return clean;
+}
+
+function formatPhoneToJid(phone) {
+  const clean = normalizePhoneDigits(phone);
+  return clean ? `${clean}@s.whatsapp.net` : null;
 }
 
 async function startWhatsAppBot() {
+  if (isStarting) return;
+  isStarting = true;
+
   try {
-    const authFolder = path.join(__dirname, 'auth_session_laundry');
     const { state, saveCreds } = await useMultiFileAuthState(authFolder);
     const { version } = await fetchLatestBaileysVersion();
 
@@ -57,29 +67,18 @@ async function startWhatsAppBot() {
       logger: pino({ level: 'silent' }),
       printQRInTerminal: false,
       auth: state,
-      browser: ['Laundry Tante Tika STB', 'Chrome', '1.0.0'],
+      browser: ['Ubuntu', 'Chrome', '20.0.04'],
       syncFullHistory: false
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', (update) => {
-      const { connection, lastDisconnect, qr } = update;
-
-      if (qr) {
-        latestQr = qr;
-        isConnected = false;
-        console.log('\n======================================================');
-        console.log('📱 SCAN QR CODE WA LAUNDRY TANTE TIKA DI BAWAH INI:');
-        console.log('======================================================\n');
-        qrcode.generate(qr, { small: true });
-        console.log('\nBuka WhatsApp HP -> Perangkat Tertaut -> Tautkan Perangkat');
-        console.log('======================================================\n');
-      }
+    sock.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect } = update;
 
       if (connection === 'open') {
         isConnected = true;
-        latestQr = null;
+        latestPairingCode = null;
         const rawId = sock.user?.id || '';
         connectedNumber = rawId.split(':')[0].split('@')[0] || 'Terhubung';
         const ips = getLocalWifiIPs();
@@ -87,7 +86,7 @@ async function startWhatsAppBot() {
         console.log('✅ BOT WHATSAPP LAUNDRY TANTE TIKA TERHUBUNG!');
         console.log(`📞 Nomor Bot WA : +${connectedNumber}`);
         ips.forEach((ip) => {
-          console.log(`🌐 Masukkan IP ini di Aplikasi HP: ${ip}:${PORT}`);
+          console.log(`🌐 Alamat IP Bot di Aplikasi HP: ${ip}:${PORT}`);
         });
         console.log('======================================================\n');
       }
@@ -99,41 +98,126 @@ async function startWhatsAppBot() {
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
         console.log(`⚠️ Koneksi WA terputus (kode: ${statusCode}). Reconnect: ${shouldReconnect}`);
         if (shouldReconnect) {
-          setTimeout(() => startWhatsAppBot(), 4000);
+          setTimeout(() => startWhatsAppBot(), 3000);
         } else {
-          console.log('❌ Sesi WA telah logout. Hapus folder auth_session_laundry lalu restart PM2 untuk scan ulang.');
+          try {
+            fs.rmSync(authFolder, { recursive: true, force: true });
+          } catch (e) {}
+          setTimeout(() => startWhatsAppBot(), 1500);
         }
       }
     });
   } catch (err) {
     console.error('Gagal memulai Bot WA, mencoba ulang dalam 5 detik:', err.message);
     setTimeout(() => startWhatsAppBot(), 5000);
+  } finally {
+    isStarting = false;
   }
 }
 
-// Halaman utama jika dibuka dari browser HP
-app.get('/', (req, res) => {
-  const ips = getLocalWifiIPs();
-  res.json({
-    app: 'Bot WhatsApp Laundry Tante Tika (STB Armbian)',
-    connected: isConnected,
-    botNumber: connectedNumber,
-    ips: ips.map((ip) => `http://${ip}:${PORT}`),
-    qrPending: Boolean(latestQr)
-  });
-});
-
-// Cek status koneksi dari aplikasi Laundry
+// Cek status koneksi dari Aplikasi HP
 app.get('/status', (req, res) => {
   const ips = getLocalWifiIPs();
   res.json({
     success: true,
     connected: isConnected,
-    status: isConnected ? 'connected' : latestQr ? 'qr_ready' : 'connecting',
+    status: isConnected ? 'connected' : 'pairing_ready',
     botNumber: connectedNumber,
+    pairingCode: latestPairingCode,
     ip: ips[0],
     port: PORT
   });
+});
+
+// Minta Kode Pairing 8 Digit langsung dari Aplikasi HP (Khusus 1 HP tanpa Scan QR)
+app.post('/pair-code', async (req, res) => {
+  try {
+    const { phone } = req.body || {};
+    const cleanNumber = normalizePhoneDigits(phone);
+
+    if (!cleanNumber || cleanNumber.length < 9) {
+      return res.status(400).json({
+        success: false,
+        error: 'Masukkan nomor WhatsApp yang valid (contoh: 085169949219).'
+      });
+    }
+
+    if (isConnected) {
+      return res.json({
+        success: true,
+        alreadyConnected: true,
+        botNumber: connectedNumber
+      });
+    }
+
+    let code = null;
+    try {
+      if (!sock) {
+        await startWhatsAppBot();
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      code = await sock.requestPairingCode(cleanNumber);
+    } catch (firstErr) {
+      // Jika sesi lama menggantung, otomatis bersihkan dan buat sesi baru lalu minta kode lagi
+      if (sock) {
+        try { sock.end(); } catch (e) {}
+        sock = null;
+      }
+      try {
+        fs.rmSync(authFolder, { recursive: true, force: true });
+      } catch (e) {}
+      await startWhatsAppBot();
+      await new Promise((r) => setTimeout(r, 2500));
+      code = await sock.requestPairingCode(cleanNumber);
+    }
+
+    const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
+    latestPairingCode = formattedCode;
+
+    console.log(`🔢 KODE PAIRING UNTUK +${cleanNumber}: ${formattedCode}`);
+    return res.json({
+      success: true,
+      code: formattedCode,
+      phone: cleanNumber
+    });
+  } catch (err) {
+    console.error('[GAGAL REQUEST PAIRING CODE]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Gagal meminta kode pairing. Klik tombol "Reset Sesi" lalu coba lagi.'
+    });
+  }
+});
+
+// Reset Sesi / Ganti Nomor WA langsung dari Aplikasi HP
+app.post('/logout', async (req, res) => {
+  try {
+    console.log('🔄 Mereset sesi WhatsApp atas permintaan dari Aplikasi HP...');
+    if (sock) {
+      try { await sock.logout(); } catch (e) {}
+      try { sock.end(); } catch (e) {}
+      sock = null;
+    }
+    isConnected = false;
+    connectedNumber = null;
+    latestPairingCode = null;
+
+    try {
+      fs.rmSync(authFolder, { recursive: true, force: true });
+    } catch (e) {}
+
+    setTimeout(() => startWhatsAppBot(), 1000);
+
+    return res.json({
+      success: true,
+      message: 'Sesi berhasil direset. Silakan klik Minta Kode Pairing.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Gagal mereset sesi.'
+    });
+  }
 });
 
 // Endpoint kirim pesan WA otomatis dari aplikasi Laundry
@@ -186,9 +270,9 @@ app.post('/api/wa-laundry', handleSendWA);
 app.listen(PORT, '0.0.0.0', () => {
   const ips = getLocalWifiIPs();
   console.log('\n======================================================');
-  console.log('🚀 SERVER BOT LAUNDRY TANTE TIKA AKTIF (WIFI RUMAH)');
+  console.log('🚀 SERVER BOT LAUNDRY TANTE TIKA AKTIF (MODE PAIRING 1 HP)');
   ips.forEach((ip) => {
-    console.log(`👉 Alamat IP Bot STB: ${ip}:${PORT}`);
+    console.log(`👉 Masukkan IP ini di Aplikasi HP: ${ip}:${PORT}`);
   });
   console.log('======================================================\n');
   startWhatsAppBot();

@@ -163,10 +163,15 @@ export default function App() {
     connected: boolean;
     message: string;
     botNumber?: string | null;
-  }>({ checked: false, connected: false, message: 'Belum dicek' });
+    qrImage?: string | null;
+    pairingCode?: string | null;
+  }>({ checked: false, connected: false, message: 'Belum dicek', qrImage: null, pairingCode: null });
   const [isCheckingBot, setIsCheckingBot] = useState(false);
   const [isSendingWA, setIsSendingWA] = useState(false);
   const [testPhoneInput, setTestPhoneInput] = useState('');
+  const [pairingPhoneInput, setPairingPhoneInput] = useState('085169949219');
+  const [botAuthTab, setBotAuthTab] = useState<'qr' | 'code'>('qr');
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('tt_wa_bot_config', JSON.stringify(waBotConfig));
@@ -647,18 +652,22 @@ export default function App() {
     }
   };
 
-  const checkBotConnection = async (customIp?: string) => {
+  const checkBotConnection = async (customIp?: string, silent = false) => {
     const baseUrl = getBotBaseUrl(customIp !== undefined ? customIp : waBotConfig.ip);
     if (!baseUrl) {
-      setBotStatus({
-        checked: true,
-        connected: false,
-        message: 'Masukkan alamat IP STB terlebih dahulu (contoh: 192.168.1.15:3005).'
-      });
+      if (!silent) {
+        setBotStatus({
+          checked: true,
+          connected: false,
+          message: 'Masukkan alamat IP STB terlebih dahulu (contoh: 192.168.1.15:3005).',
+          qrImage: null,
+          pairingCode: null
+        });
+      }
       return false;
     }
 
-    setIsCheckingBot(true);
+    if (!silent) setIsCheckingBot(true);
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 3500);
@@ -673,26 +682,112 @@ export default function App() {
           checked: true,
           connected: true,
           botNumber: data.botNumber,
+          qrImage: null,
+          pairingCode: null,
           message: `Terhubung ke Bot STB (+${data.botNumber || 'Aktif'})`
         });
         return true;
       } else {
-        setBotStatus({
+        setBotStatus(prev => ({
           checked: true,
           connected: false,
-          message: data.status === 'qr_ready'
-            ? 'Server STB aktif, tetapi WA belum di-scan QR di terminal STB.'
-            : 'Server STB aktif, tetapi WhatsApp sedang terputus.'
-        });
+          botNumber: null,
+          qrImage: data.qrImage || null,
+          pairingCode: data.pairingCode || prev.pairingCode || null,
+          message: data.qrImage
+            ? 'Server STB Aktif! Silakan Scan QR di bawah atau gunakan Kode 8 Digit.'
+            : 'Server STB Aktif, sedang menyiapkan QR Code WhatsApp...'
+        }));
         return false;
       }
     } catch {
+      if (!silent) {
+        setBotStatus({
+          checked: true,
+          connected: false,
+          qrImage: null,
+          pairingCode: null,
+          message: 'Tidak dapat menghubungi STB. Pastikan HP satu WiFi dengan STB & pm2 laundry-tante-tika sudah jalan.'
+        });
+      }
+      return false;
+    } finally {
+      if (!silent) setIsCheckingBot(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showBotModal || !waBotConfig.ip.trim()) return;
+    const interval = setInterval(() => {
+      checkBotConnection(waBotConfig.ip, true);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [showBotModal, waBotConfig.ip]);
+
+  const handleRequestPairingCode = async () => {
+    const baseUrl = getBotBaseUrl(waBotConfig.ip);
+    if (!baseUrl) {
+      showModal('IP Kosong', 'Masukkan IP STB WiFi rumah terlebih dahulu.');
+      return;
+    }
+    if (!pairingPhoneInput.trim()) {
+      showModal('Nomor Kosong', 'Masukkan nomor WhatsApp yang akan dijadikan Bot Laundry.');
+      return;
+    }
+
+    setIsRequestingCode(true);
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${baseUrl}/pair-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: pairingPhoneInput.trim() }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.code) {
+        setBotStatus(prev => ({
+          ...prev,
+          checked: true,
+          pairingCode: data.code,
+          message: `Kode 8 Digit siap! Masukkan di WhatsApp (+${data.phone})`
+        }));
+      } else {
+        showModal('Gagal Minta Kode', data.error || 'Klik tombol Reset Sesi lalu coba lagi.');
+      }
+    } catch {
+      showModal('Gagal Terhubung', 'Pastikan IP STB benar dan script bot-stb terbaru sudah dijalankan di STB.');
+    } finally {
+      setIsRequestingCode(false);
+    }
+  };
+
+  const handleResetBotSession = async () => {
+    const baseUrl = getBotBaseUrl(waBotConfig.ip);
+    if (!baseUrl) return;
+
+    setIsCheckingBot(true);
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      await fetch(`${baseUrl}/logout`, {
+        method: 'POST',
+        signal: controller.signal
+      });
+      clearTimeout(timer);
       setBotStatus({
         checked: true,
         connected: false,
-        message: 'Tidak dapat menghubungi STB. Pastikan HP satu WiFi dengan STB & pm2 laundry-tante-tika sudah jalan.'
+        botNumber: null,
+        qrImage: null,
+        pairingCode: null,
+        message: 'Sesi direset. Menyiapkan QR Code baru dalam 3 detik...'
       });
-      return false;
+      setTimeout(() => checkBotConnection(waBotConfig.ip), 2500);
+    } catch {
+      showModal('Gagal Reset', 'Tidak dapat menghubungi STB Armbian.');
     } finally {
       setIsCheckingBot(false);
     }
@@ -1622,6 +1717,81 @@ _"PAKAIAN BERSIH, HATI SENANG"_
                 )}
               </div>
 
+              {/* Panel Tautkan WhatsApp Khusus Pairing Code 8 Digit (1 HP) */}
+              {!botStatus.connected && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                      Tautkan WA dengan Kode Pairing (8 Digit)
+                    </p>
+                    <button
+                      onClick={handleResetBotSession}
+                      disabled={isCheckingBot}
+                      className="text-[10px] font-black text-rose-600 uppercase underline"
+                    >
+                      Reset Sesi
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                    Khusus <b>1 HP (Tanpa Scan Kamera)</b>. Isi IP STB di atas, masukkan nomor WA Laundry Anda di bawah, lalu klik <b>Minta Kode Pairing</b>:
+                  </p>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="tel"
+                      placeholder="085169949219"
+                      value={pairingPhoneInput}
+                      onChange={e => setPairingPhoneInput(e.target.value)}
+                      className="flex-1 p-3 bg-white border border-slate-200 rounded-xl outline-none font-bold text-xs text-slate-800"
+                    />
+                    <button
+                      onClick={handleRequestPairingCode}
+                      disabled={isRequestingCode}
+                      className="px-4 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider btn-press disabled:opacity-50 shrink-0 shadow-sm shadow-blue-600/20"
+                    >
+                      {isRequestingCode ? 'Meminta...' : 'Minta Kode Pairing'}
+                    </button>
+                  </div>
+
+                  {botStatus.pairingCode && (
+                    <div className="p-4 bg-white rounded-2xl border-2 border-blue-500 text-center space-y-2.5 shadow-sm">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        Kode Pairing 8 Digit Anda:
+                      </p>
+                      <p className="text-2xl font-black tracking-widest text-slate-900 font-mono select-all">
+                        {botStatus.pairingCode}
+                      </p>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard?.writeText(botStatus.pairingCode || '');
+                          showModal('Kode Disalin', `Kode ${botStatus.pairingCode} berhasil disalin.\n\nBuka WhatsApp -> Perangkat Tertaut -> Tautkan Perangkat -> Tautkan dengan nomor telepon saja -> Tempel kode ini.`);
+                        }}
+                        className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider btn-press"
+                      >
+                        Salin Kode 8 Digit
+                      </button>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">
+                        Buka WhatsApp ➔ <b>Perangkat Tertaut</b> ➔ <b>Tautkan Perangkat</b> ➔ pilih <b>"Tautkan dengan nomor telepon saja"</b> di bagian bawah layar.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tombol Ganti Nomor WA jika sudah terhubung */}
+              {botStatus.connected && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleResetBotSession}
+                    disabled={isCheckingBot}
+                    className="px-3 py-2 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-wider border border-rose-200 btn-press"
+                  >
+                    Putuskan / Ganti Nomor WA Bot
+                  </button>
+                </div>
+              )}
+
               {/* Tes Kirim WA */}
               <div className="p-4 bg-slate-50 rounded-2xl space-y-2.5 border border-slate-100">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tes Kirim Pesan via Bot</p>
@@ -1641,22 +1811,6 @@ _"PAKAIAN BERSIH, HATI SENANG"_
                     Tes Kirim
                   </button>
                 </div>
-              </div>
-
-              {/* Panduan Singkat Terminal STB */}
-              <div className="p-4 bg-slate-900 text-slate-200 rounded-2xl space-y-2 text-[10px]">
-                <p className="font-black uppercase tracking-widest text-blue-400">Perintah Terminal STB Armbian:</p>
-                <pre className="font-mono text-[10px] text-emerald-300 whitespace-pre-wrap leading-relaxed select-all bg-black/40 p-3 rounded-xl">
-{`git clone https://github.com/evor-rcx/laundry-tante-tika.git
-cd laundry-tante-tika/bot-stb
-npm install
-pm2 start index.js --name "laundry-tante-tika"
-pm2 save
-pm2 logs laundry-tante-tika`}
-                </pre>
-                <p className="text-slate-400 leading-relaxed">
-                  Saat <code className="text-white">pm2 logs</code> dibuka, scan QR WA Laundry Anda. Alamat IP STB akan langsung tampil otomatis di layar terminal.
-                </p>
               </div>
 
               <button
