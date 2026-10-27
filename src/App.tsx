@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
+import { toJpeg } from 'html-to-image';
 import { 
   Printer, 
   Send, 
@@ -1005,17 +1006,42 @@ export default function App() {
   const generateReceiptImage = async (): Promise<string | null> => {
     if (!receiptCardRef.current) return null;
     try {
+      // Prioritas 1: html-to-image (cepat, akurat, tidak terpotong viewport mobile)
+      const dataUrl = await toJpeg(receiptCardRef.current, {
+        quality: 0.9,
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        cacheBust: true
+      });
+      if (dataUrl && dataUrl.length > 500) {
+        console.log('Gambar nota sukses dibuat via html-to-image, ukuran base64:', dataUrl.length);
+        return dataUrl;
+      }
+    } catch (err1) {
+      console.warn('html-to-image gagal, mencoba fallback html2canvas:', err1);
+    }
+
+    try {
+      // Prioritas 2: Fallback html2canvas
       const canvas = await html2canvas(receiptCardRef.current, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#ffffff',
-        logging: false
+        logging: false,
+        x: 0,
+        y: 0,
+        width: 450
       });
-      return canvas.toDataURL('image/jpeg', 0.88);
-    } catch (err) {
-      console.warn('Gagal render gambar nota:', err);
-      return null;
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      if (dataUrl && dataUrl.length > 500) {
+        console.log('Gambar nota sukses dibuat via html2canvas, ukuran base64:', dataUrl.length);
+        return dataUrl;
+      }
+    } catch (err2) {
+      console.warn('Fallback html2canvas juga gagal:', err2);
     }
+    return null;
   };
 
   const handlePreviewImageCard = async () => {
@@ -1050,7 +1076,7 @@ export default function App() {
       setIsSendingWA(true);
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 8000);
+        const timer = setTimeout(() => controller.abort(), 20000);
         const res = await fetch(`${baseUrl}/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1265,7 +1291,7 @@ ${upcomingEventText}`;
   };
 
   return (
-    <div className="min-h-screen pb-40">
+    <div className="min-h-screen pb-40 bg-slate-50 relative z-0">
       <header className="p-6 max-w-md mx-auto flex justify-between items-center bg-white/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 p-1 overflow-hidden">
@@ -1729,20 +1755,18 @@ ${upcomingEventText}`;
         </div>
       </footer>
 
-      {/* Hidden Offscreen Receipt Card for html2canvas */}
+      {/* Offscreen Receipt Card for image generator (completely offscreen) */}
       <div 
         aria-hidden="true"
         style={{
           position: 'fixed',
+          top: 0,
           left: '-9999px',
-          top: '-9999px',
           width: '450px',
-          pointerEvents: 'none',
-          zIndex: -999,
-          opacity: 0.99
+          pointerEvents: 'none'
         }}
       >
-        <div ref={receiptCardRef} style={{ width: '450px' }}>
+        <div ref={receiptCardRef} style={{ width: '450px', backgroundColor: '#ffffff' }}>
           <ReceiptCard
             notaId={notaId}
             customer={customer}
