@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
+import html2canvas from 'html2canvas';
 import { 
   Printer, 
   Send, 
@@ -21,7 +22,9 @@ import {
   FileText,
   Calendar,
   Eye,
-  Wifi
+  Wifi,
+  Download,
+  Image as ImageIcon
 } from 'lucide-react';
 
 // Types
@@ -74,6 +77,207 @@ const SERVICES_CATALOG = [
     { name: 'CUCI KARPET KECIL (UJICOBA)', price: 20000, unit: 'pcs' },
   ]},
 ];
+
+export const getWAGreeting = (date: Date = new Date()): string => {
+  const hour = date.getHours();
+  if (hour >= 4 && hour < 11) return 'Selamat pagi';
+  if (hour >= 11 && hour < 15) return 'Selamat siang';
+  if (hour >= 15 && hour < 18) return 'Selamat sore';
+  if (hour >= 18 && hour < 19) return 'Selamat petang';
+  return 'Selamat malam';
+};
+
+export const getWACaption = (deliveryType: string = 'ANTAR JEMPUT', date: Date = new Date()): string => {
+  const greeting = getWAGreeting(date);
+  if (deliveryType === 'AMBIL SENDIRI') {
+    return `${greeting}, Kak. Mohon izin menginfokan bahwa cucian laundry Kakak sudah selesai diproses dan siap untuk diambil. Terima kasih.`;
+  }
+  return `${greeting}, Kak. Mohon izin, apakah ada orang di rumah saat ini? Saya ingin mengantar laundry pesanan Kakak. Terima kasih.`;
+};
+
+export const formatReceiptDateOnly = (timeStr: string) => {
+  if (!timeStr) return '';
+  return timeStr.replace(/^[A-Za-z]+,\s*/, '').replace(/\s*pukul\s*/, ' ').trim();
+};
+
+interface ReceiptCardProps {
+  notaId: string;
+  customer: CustomerInfo;
+  cart: Service[];
+  total: number;
+  time: string;
+  eventText: string;
+}
+
+const ReceiptCard = ({ notaId, customer, cart, total, time, eventText }: ReceiptCardProps) => {
+  const formattedTime = formatReceiptDateOnly(time);
+  const isLunas = customer.status === 'LUNAS';
+
+  return (
+    <div 
+      className="relative bg-white rounded-[26px] border-[3.5px] border-[#086788] p-6 text-slate-800 shadow-md select-none overflow-hidden"
+      style={{
+        backgroundColor: '#ffffff',
+        borderColor: '#086788',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}
+    >
+      {/* 4 Corner Ornaments */}
+      <div className="absolute top-2 left-2 w-9 h-9 pointer-events-none">
+        <svg viewBox="0 0 36 36" className="w-full h-full text-[#086788]" fill="none">
+          <path d="M 3 33 C 3 16.4 16.4 3 33 3" stroke="#086788" strokeWidth="2.5" />
+          <circle cx="10" cy="10" r="3.5" fill="#086788" />
+        </svg>
+      </div>
+      <div className="absolute top-2 right-2 w-9 h-9 pointer-events-none">
+        <svg viewBox="0 0 36 36" className="w-full h-full text-[#086788]" fill="none">
+          <path d="M 33 33 C 33 16.4 19.6 3 3 3" stroke="#086788" strokeWidth="2.5" />
+          <circle cx="26" cy="10" r="3.5" fill="#086788" />
+        </svg>
+      </div>
+      <div className="absolute bottom-2 left-2 w-9 h-9 pointer-events-none">
+        <svg viewBox="0 0 36 36" className="w-full h-full text-[#086788]" fill="none">
+          <path d="M 3 3 C 3 19.6 16.4 33 33 33" stroke="#086788" strokeWidth="2.5" />
+          <circle cx="10" cy="26" r="3.5" fill="#086788" />
+        </svg>
+      </div>
+      <div className="absolute bottom-2 right-2 w-9 h-9 pointer-events-none">
+        <svg viewBox="0 0 36 36" className="w-full h-full text-[#086788]" fill="none">
+          <path d="M 33 3 C 33 19.6 19.6 33 3 33" stroke="#086788" strokeWidth="2.5" />
+          <circle cx="26" cy="26" r="3.5" fill="#086788" />
+        </svg>
+      </div>
+
+      {/* Header Logo & Brand */}
+      <div className="text-center pt-1 pb-2">
+        <div className="flex items-center justify-center gap-3">
+          <div className="w-14 h-14 shrink-0">
+            <svg viewBox="0 0 64 64" className="w-full h-full" fill="none">
+              <circle cx="12" cy="16" r="3.5" fill="#38bdf8" />
+              <circle cx="19" cy="10" r="2.5" fill="#38bdf8" />
+              <circle cx="50" cy="14" r="3" fill="#38bdf8" />
+              <path d="M32 6 C30 6 28 8 28 10 C28 12 30 13 32 14 L18 22 L46 22 Z" stroke="#086788" strokeWidth="2.5" strokeLinejoin="round" fill="none" />
+              <rect x="14" y="21" width="36" height="38" rx="7" fill="#0b7285" />
+              <circle cx="22" cy="26" r="2" fill="#ffffff" />
+              <line x1="27" y1="26" x2="43" y2="26" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="32" cy="41" r="11" fill="#e0f7fa" stroke="#ffffff" strokeWidth="2.5" />
+              <circle cx="32" cy="41" r="7" fill="#0b7285" opacity="0.6" />
+            </svg>
+          </div>
+          <h1 className="text-[25px] font-black tracking-tight text-[#073b61] leading-none uppercase">
+            LAUNDRY TANTE TIKA
+          </h1>
+        </div>
+        
+        <p className="text-[12px] font-bold text-slate-800 mt-1.5 leading-snug">
+          Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan
+        </p>
+        <p className="text-[13px] font-bold text-slate-800">
+          WA: 0851-6994-9219
+        </p>
+
+        {/* Divider with double lines */}
+        <div className="w-full flex items-center justify-center my-2 gap-2 px-2">
+          <div className="h-[2px] bg-[#086788] flex-1 opacity-70"></div>
+          <div className="w-1.5 h-1.5 rotate-45 bg-[#086788]"></div>
+          <div className="h-[2px] bg-[#086788] flex-1 opacity-70"></div>
+        </div>
+      </div>
+
+      {/* Nota ID & Waktu */}
+      <div className="text-center my-1.5">
+        <h2 className="text-[28px] font-black italic tracking-wide text-slate-900 font-serif">
+          Nota #LT-{notaId}
+        </h2>
+        <div className="flex items-center justify-center gap-1.5 text-[15px] font-bold text-slate-800 mt-0.5">
+          <span>🗓️</span>
+          <span>Waktu: {formattedTime}</span>
+        </div>
+      </div>
+
+      {/* Customer Info */}
+      <div className="my-3 space-y-1 px-1">
+        <div className="flex items-center gap-2 text-[17px] font-black text-slate-900">
+          <span className="text-xl">👤</span>
+          <span>Nama: {customer.name.trim() ? customer.name.toUpperCase() : '-'}</span>
+        </div>
+        <div className="flex items-center gap-2 text-[17px] font-black text-slate-900">
+          <span className="text-xl">📍</span>
+          <span>Alamat: {customer.address.trim() ? customer.address.toUpperCase() : '-'}</span>
+        </div>
+      </div>
+
+      {/* Rincian Pesanan Box */}
+      <div 
+        className="rounded-2xl p-4 my-3"
+        style={{ backgroundColor: '#e6f4f8' }}
+      >
+        <div className="text-[17px] font-black text-[#086788] mb-2 flex items-center gap-1.5 tracking-wide">
+          <span>📦</span>
+          <span>RINCIAN PESANAN:</span>
+        </div>
+
+        <div className="space-y-2.5">
+          {cart.length === 0 ? (
+            <p className="text-sm italic text-slate-500">- Belum ada rincian pesanan -</p>
+          ) : (
+            cart.map((item, idx) => (
+              <div key={idx} className="space-y-0.5">
+                <div className="text-[16px] font-black text-slate-900 uppercase">
+                  ▪ {item.name}
+                </div>
+                <div className="text-[15px] font-bold text-slate-800 pl-4 font-mono">
+                  {item.qty} {item.unit.toUpperCase()} x Rp {item.price.toLocaleString('id-ID')} = Rp {item.subtotal.toLocaleString('id-ID')}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Dashed Divider */}
+      <div className="border-b-[4px] border-dashed border-[#086788] my-3.5 w-full opacity-80"></div>
+
+      {/* Total & Status & Pengiriman */}
+      <div className="px-1 space-y-2.5">
+        <div 
+          className="px-4 py-2 rounded-xl inline-block font-black text-[22px] tracking-tight shadow-xs"
+          style={{ backgroundColor: '#d1f4e7', color: '#064e6f' }}
+        >
+          💳 TOTAL: Rp {total.toLocaleString('id-ID')}
+        </div>
+
+        <div className="text-[18px] font-black flex items-center gap-1.5">
+          <span>🏷</span>
+          <span>STATUS: </span>
+          <span className={isLunas ? 'text-emerald-600' : 'text-rose-500'}>
+            {customer.status}
+          </span>
+        </div>
+
+        <div className="text-[18px] font-black text-slate-900 flex items-center gap-1.5">
+          <span>🚚</span>
+          <span>PENGIRIMAN: {customer.delivery}</span>
+        </div>
+      </div>
+
+      {/* Dashed Divider */}
+      <div className="border-b-[4px] border-dashed border-[#086788] my-3.5 w-full opacity-80"></div>
+
+      {/* Footer Quote & Event */}
+      <div className="text-center pt-0.5 pb-2">
+        <p className="text-[18px] font-black italic tracking-wide text-slate-900 font-serif">
+          “PAKAIAN BERSIH, HATI SENANG”
+        </p>
+        {eventText && (
+          <p className="text-[14px] font-bold text-slate-800 mt-1">
+            {eventText}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 import { LOGO_DATA } from './logoData';
 
@@ -172,6 +376,10 @@ export default function App() {
   const [pairingPhoneInput, setPairingPhoneInput] = useState('085169949219');
   const [botAuthTab, setBotAuthTab] = useState<'qr' | 'code'>('qr');
   const [isRequestingCode, setIsRequestingCode] = useState(false);
+  const receiptCardRef = useRef<HTMLDivElement>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('tt_wa_bot_config', JSON.stringify(waBotConfig));
@@ -793,7 +1001,47 @@ export default function App() {
     }
   };
 
-  const sendViaBotOrFallback = async (cleanPhone: string, textMessage: string): Promise<{ sentViaBot: boolean; usedFallback: boolean }> => {
+  const generateReceiptImage = async (): Promise<string | null> => {
+    if (!receiptCardRef.current) return null;
+    try {
+      const canvas = await html2canvas(receiptCardRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      return canvas.toDataURL('image/jpeg', 0.88);
+    } catch (err) {
+      console.warn('Gagal render gambar nota:', err);
+      return null;
+    }
+  };
+
+  const handlePreviewImageCard = async () => {
+    if (cart.length === 0) {
+      showModal("Layanan Kosong", "Pilih minimal 1 layanan sebelum melihat pratinjau nota gambar.");
+      return;
+    }
+    setIsGeneratingImage(true);
+    try {
+      const img = await generateReceiptImage();
+      if (img) {
+        setPreviewImage(img);
+        setShowImagePreview(true);
+      } else {
+        showModal("Gagal Pratinjau", "Tidak dapat merender tampilan gambar nota.");
+      }
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const sendViaBotOrFallback = async (
+    cleanPhone: string, 
+    textMessage: string,
+    imageBase64?: string | null,
+    caption?: string
+  ): Promise<{ sentViaBot: boolean; usedFallback: boolean; sentAsImage: boolean }> => {
     const baseUrl = getBotBaseUrl(waBotConfig.ip);
 
     // Jika Mode Bot ON, IP STB terisi, dan Nomor WA pelanggan ada -> Coba kirim lewat Bot WiFi STB
@@ -801,18 +1049,23 @@ export default function App() {
       setIsSendingWA(true);
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 4000);
+        const timer = setTimeout(() => controller.abort(), 8000);
         const res = await fetch(`${baseUrl}/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: cleanPhone, message: textMessage }),
+          body: JSON.stringify({ 
+            phone: cleanPhone, 
+            message: textMessage,
+            image: imageBase64 || undefined,
+            caption: caption || undefined
+          }),
           signal: controller.signal
         });
         clearTimeout(timer);
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.success) {
           setIsSendingWA(false);
-          return { sentViaBot: true, usedFallback: false };
+          return { sentViaBot: true, usedFallback: false, sentAsImage: !!data.hasImage };
         }
       } catch (err) {
         console.warn('Bot STB tidak terjangkau, otomatis beralih ke WA biasa:', err);
@@ -820,17 +1073,19 @@ export default function App() {
       setIsSendingWA(false);
 
       // Fallback otomatis ke aplikasi WhatsApp biasa jika Bot STB sedang mati / di luar WiFi
-      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(textMessage)}`, '_blank');
-      return { sentViaBot: false, usedFallback: true };
+      const fallbackText = caption ? `${caption}\n\n${textMessage}` : textMessage;
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(fallbackText)}`, '_blank');
+      return { sentViaBot: false, usedFallback: true, sentAsImage: false };
     }
 
     // Mode manual (Bot OFF atau nomor tidak diisi)
+    const manualText = caption ? `${caption}\n\n${textMessage}` : textMessage;
     if (cleanPhone) {
-      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(textMessage)}`, '_blank');
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(manualText)}`, '_blank');
     } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(textMessage)}`, '_blank');
+      window.open(`https://wa.me/?text=${encodeURIComponent(manualText)}`, '_blank');
     }
-    return { sentViaBot: false, usedFallback: false };
+    return { sentViaBot: false, usedFallback: false, sentAsImage: false };
   };
 
   const handleTestBotMessage = async () => {
@@ -893,6 +1148,8 @@ export default function App() {
       detailLayanan += `▪️ *${i.name.toUpperCase()}*\n   ${i.qty} ${i.unit.toUpperCase()} x Rp ${i.price.toLocaleString()} = Rp ${i.subtotal.toLocaleString()}\n`;
     });
 
+    const caption = getWACaption(customer.delivery);
+
     const text = `*LAUNDRY TANTE TIKA*
 Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan
 WA: 0851-6994-9219
@@ -916,15 +1173,25 @@ _"PAKAIAN BERSIH, HATI SENANG"_
     let cleanPhone = customer.phone ? customer.phone.replace(/[^0-9]/g, '') : '';
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
 
-    const result = await sendViaBotOrFallback(cleanPhone, text);
+    let imageBase64: string | null = null;
+    if (waBotConfig.enabled) {
+      setIsSendingWA(true);
+      imageBase64 = await generateReceiptImage();
+    }
+
+    const result = await sendViaBotOrFallback(cleanPhone, text, imageBase64, caption);
 
     saveToHistory();
     resetForm();
 
     if (result.sentViaBot) {
-      showModal("Terkirim via Bot WiFi ✅", "Nota telah dikirim otomatis oleh Bot STB Armbian ke WhatsApp pelanggan dan transaksi disimpan di riwayat.");
+      if (result.sentAsImage) {
+        showModal("Terkirim via Bot STB ✅", `Nota Gambar (persis seperti contoh) beserta pesan antar otomatis ("${getWAGreeting()}, Kak...") telah berhasil dikirim ke WhatsApp pelanggan!`);
+      } else {
+        showModal("Terkirim via Bot WiFi ✅", "Nota telah dikirim otomatis oleh Bot STB Armbian ke WhatsApp pelanggan dan transaksi disimpan di riwayat.");
+      }
     } else if (result.usedFallback) {
-      showModal("Dialihkan ke WA Biasa", "Bot STB sedang tidak terjangkau di WiFi, nota otomatis dialihkan membuka aplikasi WhatsApp biasa.");
+      showModal("Dialihkan ke WA Biasa", "Bot STB sedang tidak terjangkau di WiFi rumah, nota dan pesan antar otomatis dialihkan membuka aplikasi WhatsApp biasa.");
     } else {
       showModal("Berhasil", "Nota telah diteruskan ke WhatsApp dan transaksi disimpan di riwayat.");
     }
@@ -1434,9 +1701,17 @@ _"PAKAIAN BERSIH, HATI SENANG"_
           <button 
             onClick={handlePrint}
             className="w-16 h-16 bg-white/10 text-white rounded-full flex items-center justify-center btn-press border border-white/20 hover:bg-white/20"
-            title="Cetak Nota"
+            title="Cetak Nota Termal"
           >
             <Printer size={24} />
+          </button>
+          <button 
+            onClick={handlePreviewImageCard}
+            disabled={isGeneratingImage || cart.length === 0}
+            className="w-16 h-16 bg-cyan-600/30 hover:bg-cyan-600/50 text-white rounded-full flex items-center justify-center btn-press border border-cyan-400/40 disabled:opacity-40"
+            title="Pratinjau Nota Gambar"
+          >
+            <ImageIcon size={22} className="text-cyan-200" />
           </button>
           <button 
             onClick={handleWA}
@@ -1447,6 +1722,97 @@ _"PAKAIAN BERSIH, HATI SENANG"_
           </button>
         </div>
       </footer>
+
+      {/* Hidden Offscreen Receipt Card for html2canvas */}
+      <div 
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: '-9999px',
+          width: '450px',
+          pointerEvents: 'none',
+          zIndex: -999,
+          opacity: 0.99
+        }}
+      >
+        <div ref={receiptCardRef} style={{ width: '450px' }}>
+          <ReceiptCard
+            notaId={notaId}
+            customer={customer}
+            cart={cart}
+            total={total}
+            time={currentTime}
+            eventText={upcomingEventText}
+          />
+        </div>
+      </div>
+
+      {/* Modal Pratinjau Nota Gambar */}
+      {showImagePreview && previewImage && (
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[250] p-4 backdrop-blur-md">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-5 max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <ImageIcon size={18} className="text-cyan-600" />
+                <h3 className="font-black text-xs uppercase tracking-wider text-slate-800">
+                  Pratinjau Nota Gambar
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowImagePreview(false)}
+                className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-500 transition-colors"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Preview image scrollable */}
+            <div className="overflow-y-auto py-3 space-y-3">
+              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50 flex justify-center">
+                <img 
+                  src={previewImage} 
+                  alt="Nota Laundry Tante Tika" 
+                  className="w-full h-auto object-contain"
+                />
+              </div>
+
+              {/* Caption preview info box */}
+              <div className="bg-cyan-50 border border-cyan-100 rounded-2xl p-3 text-[11px] space-y-1">
+                <div className="flex items-center justify-between text-[9px] font-black uppercase text-cyan-700 tracking-wider">
+                  <span>Caption Otomatis Bot ({getWAGreeting()})</span>
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-200/70 text-cyan-900 font-bold">WIB</span>
+                </div>
+                <p className="text-slate-700 font-medium italic">
+                  "{getWACaption(customer.delivery)}"
+                </p>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="pt-2 flex gap-2">
+              <a
+                href={previewImage}
+                download={`Nota-LT-${notaId}.jpg`}
+                className="flex-1 py-3 px-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+              >
+                <Download size={14} />
+                <span>Simpan</span>
+              </a>
+              <button
+                onClick={() => {
+                  setShowImagePreview(false);
+                  handleWA();
+                }}
+                className="flex-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm shadow-emerald-600/30 transition-all active:scale-[0.98]"
+              >
+                <Send size={14} />
+                <span>Kirim via Bot STB</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Customer List */}
       {showCustomerList && (

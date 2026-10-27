@@ -15,7 +15,8 @@ const PORT = process.env.PORT || 3005;
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 let sock = null;
 let isConnected = false;
@@ -68,7 +69,8 @@ async function startWhatsAppBot() {
       printQRInTerminal: false,
       auth: state,
       browser: ['Ubuntu', 'Chrome', '20.0.04'],
-      syncFullHistory: false
+      syncFullHistory: false,
+      markOnlineOnConnect: false
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -81,9 +83,12 @@ async function startWhatsAppBot() {
         latestPairingCode = null;
         const rawId = sock.user?.id || '';
         connectedNumber = rawId.split(':')[0].split('@')[0] || 'Terhubung';
+        try {
+          await sock.sendPresenceUpdate('unavailable');
+        } catch (e) {}
         const ips = getLocalWifiIPs();
         console.log('\n======================================================');
-        console.log('✅ BOT WHATSAPP LAUNDRY TANTE TIKA TERHUBUNG!');
+        console.log('✅ BOT WHATSAPP LAUNDRY TANTE TIKA TERHUBUNG (MODE SILENT/OFFLINE)!');
         console.log(`📞 Nomor Bot WA : +${connectedNumber}`);
         ips.forEach((ip) => {
           console.log(`🌐 Alamat IP Bot di Aplikasi HP: ${ip}:${PORT}`);
@@ -220,15 +225,15 @@ app.post('/logout', async (req, res) => {
   }
 });
 
-// Endpoint kirim pesan WA otomatis dari aplikasi Laundry
+// Endpoint kirim pesan WA otomatis dari aplikasi Laundry (Teks & Gambar Nota)
 async function handleSendWA(req, res) {
   try {
-    const { phone, message } = req.body || {};
+    const { phone, message, image, caption } = req.body || {};
 
-    if (!phone || !message) {
+    if (!phone || (!message && !image)) {
       return res.status(400).json({
         success: false,
-        error: 'Nomor WA (phone) dan isi pesan (message) wajib diisi.'
+        error: 'Nomor WA (phone) dan isi pesan (message atau image) wajib diisi.'
       });
     }
 
@@ -247,11 +252,28 @@ async function handleSendWA(req, res) {
       });
     }
 
-    await sock.sendMessage(jid, { text: String(message) });
+    if (image) {
+      const base64Data = String(image).replace(/^data:image\/\w+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      const finalCaption = caption || message || '';
 
-    console.log(`[TERKIRIM] Nota dikirim ke ${jid}`);
+      await sock.sendMessage(jid, {
+        image: imageBuffer,
+        caption: finalCaption
+      });
+      console.log(`[TERKIRIM FOTO NOTA] Nota gambar berhasil dikirim ke ${jid}`);
+    } else {
+      await sock.sendMessage(jid, { text: String(message) });
+      console.log(`[TERKIRIM TEKS NOTA] Pesan teks berhasil dikirim ke ${jid}`);
+    }
+
+    try {
+      await sock.sendPresenceUpdate('unavailable');
+    } catch (e) {}
+
     return res.json({
       success: true,
+      hasImage: !!image,
       to: jid.replace('@s.whatsapp.net', ''),
       botNumber: connectedNumber
     });
