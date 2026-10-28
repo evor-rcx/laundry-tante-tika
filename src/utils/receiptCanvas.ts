@@ -50,8 +50,15 @@ export function generateReceiptCardImage(data: ReceiptData): string {
   const paddingX = 35;
   const cardWidth = width - paddingX * 2; // 780px
 
+  const customer = data?.customer || { name: '-', phone: '', address: '-', status: 'BELUM LUNAS', delivery: 'AMBIL SENDIRI' };
+  const cartList = Array.isArray(data?.cart) ? data.cart : [];
+  const totalNum = Number(data?.total || 0);
+  const notaIdStr = String(data?.notaId || '1001');
+  const timeStr = String(data?.time || '');
+  const eventTextStr = String(data?.eventText || '');
+
   // Hitung tinggi dinamis berdasarkan jumlah item rincian pesanan
-  const cartCount = Math.max(1, data.cart.length);
+  const cartCount = Math.max(1, cartList.length);
   const itemsHeight = cartCount * 56 + 70; // Header rincian + items
   const baseHeight = 780; // Header, info pelanggan, total, footer
   const totalHeight = baseHeight + itemsHeight;
@@ -198,12 +205,12 @@ export function generateReceiptCardImage(data: ReceiptData): string {
   curY += 42;
   ctx.font = 'italic 900 38px Georgia, serif';
   ctx.fillStyle = '#0f172a';
-  ctx.fillText(`Nota #LT-${data.notaId}`, centerX, curY);
+  ctx.fillText(`Nota #LT-${notaIdStr}`, centerX, curY);
 
   curY += 28;
   ctx.font = '700 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#334155';
-  const displayTime = formatReceiptTime(data.time);
+  const displayTime = formatReceiptTime(timeStr);
   ctx.fillText(`🗓️ Waktu: ${displayTime}`, centerX, curY);
 
   // 7. Info Pelanggan (Nama & Alamat)
@@ -211,8 +218,8 @@ export function generateReceiptCardImage(data: ReceiptData): string {
   const leftX = cardX + 35;
   ctx.textAlign = 'left';
 
-  const custName = data.customer.name?.trim() ? data.customer.name.trim().toUpperCase() : '-';
-  const custAddr = data.customer.address?.trim() ? data.customer.address.trim().toUpperCase() : '-';
+  const custName = customer.name?.trim() ? customer.name.trim().toUpperCase() : '-';
+  const custAddr = customer.address?.trim() ? customer.address.trim().toUpperCase() : '-';
 
   ctx.font = '900 23px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#0f172a';
@@ -240,22 +247,25 @@ export function generateReceiptCardImage(data: ReceiptData): string {
 
   // Daftar Item
   boxCurY += 30;
-  if (data.cart.length === 0) {
+  if (cartList.length === 0) {
     ctx.font = 'italic 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#64748b';
     ctx.fillText('- Belum ada rincian pesanan -', boxX + 28, boxCurY);
   } else {
-    data.cart.forEach((item) => {
+    cartList.forEach((item) => {
       // Baris 1: Nama Layanan
       ctx.font = '900 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = '#0f172a';
-      ctx.fillText(`▪ ${item.name.toUpperCase()}`, boxX + 24, boxCurY);
+      ctx.fillText(`▪ ${(item.name || '').toUpperCase()}`, boxX + 24, boxCurY);
 
       // Baris 2: Qty x Harga = Subtotal
       boxCurY += 24;
       ctx.font = '700 18px "Courier New", Courier, monospace';
       ctx.fillStyle = '#1e293b';
-      const detailStr = `   ${item.qty} ${item.unit.toUpperCase()} x Rp ${item.price.toLocaleString('id-ID')} = Rp ${item.subtotal.toLocaleString('id-ID')}`;
+      const qtyNum = Number(item.qty || 0);
+      const priceNum = Number(item.price || 0);
+      const subtotalNum = Number(item.subtotal || qtyNum * priceNum);
+      const detailStr = `   ${qtyNum} ${(item.unit || '').toUpperCase()} x Rp ${priceNum.toLocaleString('id-ID')} = Rp ${subtotalNum.toLocaleString('id-ID')}`;
       ctx.fillText(detailStr, boxX + 24, boxCurY);
 
       boxCurY += 32;
@@ -287,12 +297,12 @@ export function generateReceiptCardImage(data: ReceiptData): string {
 
   ctx.font = '900 25px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#064e6f';
-  ctx.fillText(`💳 TOTAL: Rp ${data.total.toLocaleString('id-ID')}`, leftX + 18, curY + 36);
+  ctx.fillText(`💳 TOTAL: Rp ${totalNum.toLocaleString('id-ID')}`, leftX + 18, curY + 36);
 
   curY += badgeH + 28;
 
   // Status Pembayaran
-  const isLunas = String(data.customer.status).toUpperCase() === 'LUNAS';
+  const isLunas = String(customer.status || '').toUpperCase() === 'LUNAS';
   ctx.font = '900 23px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = '#0f172a';
   ctx.fillText('🏷 STATUS: ', leftX, curY);
@@ -306,7 +316,7 @@ export function generateReceiptCardImage(data: ReceiptData): string {
 
   // Pengiriman
   ctx.fillStyle = '#0f172a';
-  ctx.fillText(`🚚 PENGIRIMAN: ${data.customer.delivery}`, leftX, curY);
+  ctx.fillText(`🚚 PENGIRIMAN: ${customer.delivery || 'AMBIL SENDIRI'}`, leftX, curY);
 
   curY += 26;
 
@@ -328,11 +338,11 @@ export function generateReceiptCardImage(data: ReceiptData): string {
   ctx.fillStyle = '#0f172a';
   ctx.fillText('“PAKAIAN BERSIH, HATI SENANG”', centerX, curY);
 
-  if (data.eventText) {
+  if (eventTextStr) {
     curY += 28;
     ctx.font = '700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#334155';
-    ctx.fillText(data.eventText, centerX, curY);
+    ctx.fillText(eventTextStr, centerX, curY);
   }
 
   // Export kualitas tinggi JPEG
