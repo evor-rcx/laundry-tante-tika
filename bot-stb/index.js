@@ -145,18 +145,29 @@ function parseMessageToReceipt(text) {
 function generateReceiptSvg(data) {
   const width = 850;
   const paddingX = 40;
-  const cardWidth = width - paddingX * 2; // 770
+  const cardWidth = width - paddingX * 2;
 
   const items = data.items.length > 0 ? data.items : [{ name: 'Layanan Laundry', detail: data.total }];
   const itemsHeight = items.length * 65 + 80;
-  const totalHeight = 850 + itemsHeight;
+  const totalHeight = 880 + itemsHeight;
   const cardHeight = totalHeight - 60;
 
   const isLunas = data.status.toUpperCase().includes('LUNAS') && !data.status.toUpperCase().includes('BELUM');
   const statusColor = isLunas ? '#059669' : '#e11d48';
   
-  // Font stack that includes emoji support
   const fontStack = "'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'DejaVu Sans', Arial, sans-serif";
+
+  // Ambil Banner Atas dari file lokal jika ada
+  let bannerBase64 = '';
+  try {
+    const bannerPath = path.join(__dirname, 'Bener atas.jpg');
+    if (fs.existsSync(bannerPath)) {
+      const buf = fs.readFileSync(bannerPath);
+      bannerBase64 = `data:image/jpeg;base64,${buf.toString('base64')}`;
+    }
+  } catch (e) {
+    console.log('ℹ️ Tidak bisa memuat Bener atas.jpg, menggunakan fallback desain.');
+  }
 
   let itemsSvg = '';
   let curItemY = 45;
@@ -168,7 +179,7 @@ function generateReceiptSvg(data) {
     curItemY += 65;
   }
 
-  const boxY = 480;
+  const boxY = 490;
   const dash1Y = boxY + itemsHeight + 30;
   const totalBadgeY = dash1Y + 30;
   const statusY = totalBadgeY + 95;
@@ -177,97 +188,66 @@ function generateReceiptSvg(data) {
   const footerY = dash2Y + 50;
   const eventY = footerY + 32;
 
+  const headerContent = bannerBase64 
+    ? `<image x="${paddingX + 25}" y="60" width="${cardWidth - 50}" href="${bannerBase64}" preserveAspectRatio="xMidYMid meet" />`
+    : `
+    <g transform="translate(${width / 2}, 95)">
+      <path d="M -22,-15 L 22,-15 L 22,20 C 22,25 18,28 12,28 L -12,28 C -18,28 -22,25 -22,20 Z" fill="#086788" />
+      <path d="M -15,-15 C -15,-28 15,-28 15,-15" fill="none" stroke="#086788" stroke-width="4" stroke-linecap="round" />
+      <circle cx="0" cy="8" r="10" fill="#ffffff" />
+      <circle cx="0" cy="8" r="6" fill="#086788" />
+      <circle cx="-35" cy="-10" r="4" fill="#38bdf8" />
+      <circle cx="35" cy="-15" r="5" fill="#38bdf8" />
+    </g>
+    <text x="${width / 2}" y="165" text-anchor="middle" font-family="${fontStack}" font-weight="900" font-size="42" fill="#073b61">LAUNDRY TANTE TIKA</text>
+    <text x="${width / 2}" y="195" text-anchor="middle" font-family="${fontStack}" font-weight="bold" font-size="18" fill="#475569">Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan</text>
+    <text x="${width / 2}" y="222" text-anchor="middle" font-family="${fontStack}" font-weight="900" font-size="21" fill="#086788">WA: 0851-6994-9219</text>
+    `;
+
   return `
 <svg width="${width}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="${width}" height="${totalHeight}" fill="#f8fafc" />
+  <rect width="${width}" height="${totalHeight}" fill="#ffffff" />
+  <rect x="${paddingX}" y="30" width="${cardWidth}" height="${cardHeight}" rx="45" ry="45" fill="#ffffff" stroke="#086788" stroke-width="5" />
+  <path d="M ${paddingX + 20} ${30 + 50} A 30 30 0 0 1 ${paddingX + 50} ${30 + 20}" fill="none" stroke="#086788" stroke-width="3" />
+  <circle cx="${paddingX + 35}" cy="${30 + 35}" r="5" fill="#086788" />
+  <path d="M ${paddingX + cardWidth - 20} ${30 + 50} A 30 30 0 0 0 ${paddingX + cardWidth - 50} ${30 + 20}" fill="none" stroke="#086788" stroke-width="3" />
+  <circle cx="${paddingX + cardWidth - 35}" cy="${30 + 35}" r="5" fill="#086788" />
+  <path d="M ${paddingX + 20} ${30 + cardHeight - 50} A 30 30 0 0 0 ${paddingX + 50} ${30 + cardHeight - 20}" fill="none" stroke="#086788" stroke-width="3" />
+  <circle cx="${paddingX + 35}" cy="${30 + cardHeight - 35}" r="5" fill="#086788" />
+  <path d="M ${paddingX + cardWidth - 20} ${30 + cardHeight - 50} A 30 30 0 0 1 ${paddingX + cardWidth - 50} ${30 + cardHeight - 20}" fill="none" stroke="#086788" stroke-width="3" />
+  <circle cx="${paddingX + cardWidth - 35}" cy="${30 + cardHeight - 35}" r="5" fill="#086788" />
+  
+  ${headerContent}
 
-  <!-- Main Card -->
-  <rect x="${paddingX}" y="30" width="${cardWidth}" height="${cardHeight}" rx="40" ry="40" fill="#ffffff" stroke="#0ea5e9" stroke-width="6" />
-
-  <!-- Corner Flourishes -->
-  <path d="M ${paddingX + 20} ${30 + 50} A 30 30 0 0 1 ${paddingX + 50} ${30 + 20}" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round" />
-  <circle cx="${paddingX + 35}" cy="${30 + 35}" r="6" fill="#0ea5e9" />
-
-  <path d="M ${paddingX + cardWidth - 20} ${30 + 50} A 30 30 0 0 0 ${paddingX + cardWidth - 50} ${30 + 20}" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round" />
-  <circle cx="${paddingX + cardWidth - 35}" cy="${30 + 35}" r="6" fill="#0ea5e9" />
-
-  <path d="M ${paddingX + 20} ${30 + cardHeight - 50} A 30 30 0 0 0 ${paddingX + 50} ${30 + cardHeight - 20}" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round" />
-  <circle cx="${paddingX + 35}" cy="${30 + cardHeight - 35}" r="6" fill="#0ea5e9" />
-
-  <path d="M ${paddingX + cardWidth - 20} ${30 + cardHeight - 50} A 30 30 0 0 1 ${paddingX + cardWidth - 50} ${30 + cardHeight - 20}" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round" />
-  <circle cx="${paddingX + cardWidth - 35}" cy="${30 + cardHeight - 35}" r="6" fill="#0ea5e9" />
-
-  <!-- Improved Header / Logo -->
-  <g transform="translate(${width / 2}, 100)">
-    <!-- Laundry Basket Icon -->
-    <path d="M -30,-20 L 30,-20 L 25,20 L -25,20 Z" fill="#0ea5e9" />
-    <rect x="-35" y="-25" width="70" height="8" rx="4" fill="#0369a1" />
-    <path d="M -15,-10 L -15,10 M 0,-10 L 0,10 M 15,-10 L 15,10" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
-    <!-- Bubbles -->
-    <circle cx="-45" cy="-15" r="5" fill="#bae6fd" />
-    <circle cx="48" cy="-22" r="7" fill="#bae6fd" />
-    <circle cx="40" cy="5" r="4" fill="#bae6fd" />
+  <g transform="translate(${width / 2}, 250)">
+    <line x1="-320" y1="0" x2="-15" y2="0" stroke="#086788" stroke-width="2" />
+    <path d="M -8,0 L 0,-6 L 8,0 L 0,6 Z" fill="#086788" />
+    <line x1="15" y1="0" x2="320" y2="0" stroke="#086788" stroke-width="2" />
   </g>
-
-  <!-- Brand Name -->
-  <text x="${width / 2}" y="175" text-anchor="middle" font-family="${fontStack}" font-weight="900" font-size="42" fill="#0c4a6e">LAUNDRY TANTE TIKA</text>
-  <text x="${width / 2}" y="210" text-anchor="middle" font-family="${fontStack}" font-weight="600" font-size="19" fill="#475569">Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan</text>
-  <text x="${width / 2}" y="238" text-anchor="middle" font-family="${fontStack}" font-weight="800" font-size="22" fill="#0ea5e9">WA: 0851-6994-9219</text>
-
-  <!-- Decorative Divider -->
-  <g transform="translate(${width / 2}, 270)">
-    <line x1="-300" y1="0" x2="-20" y2="0" stroke="#cbd5e1" stroke-width="2" />
-    <circle cx="0" cy="0" r="6" fill="#0ea5e9" />
-    <line x1="20" y1="0" x2="300" y2="0" stroke="#cbd5e1" stroke-width="2" />
+  <text x="${width / 2}" y="315" text-anchor="middle" font-family="'Times New Roman', serif" font-weight="900" font-style="italic" font-size="52" fill="#0f172a">Nota #LT-${escapeXml(data.notaId)}</text>
+  <text x="${width / 2}" y="365" text-anchor="middle" font-family="${fontStack}" font-weight="bold" font-size="22" fill="#334155">🗓️ Waktu: ${escapeXml(data.waktu)}</text>
+  <g transform="translate(${paddingX + 45}, 420)">
+    <text x="0" y="0" font-family="${fontStack}" font-weight="900" font-size="26" fill="#0f172a">👤 Nama: ${escapeXml(data.nama)}</text>
+    <text x="0" y="42" font-family="${fontStack}" font-weight="900" font-size="26" fill="#0f172a">📍 Alamat: ${escapeXml(data.alamat)}</text>
   </g>
-
-  <!-- Receipt ID & Time -->
-  <g transform="translate(${width / 2}, 335)">
-    <rect x="-180" y="-40" width="360" height="65" rx="15" fill="#f1f5f9" />
-    <text x="0" y="5" text-anchor="middle" font-family="${fontStack}" font-weight="900" font-size="36" fill="#1e293b">Nota #LT-${escapeXml(data.notaId)}</text>
-  </g>
-  <text x="${width / 2}" y="385" text-anchor="middle" font-family="${fontStack}" font-weight="bold" font-size="22" fill="#64748b">🗓️ Waktu: ${escapeXml(data.waktu)}</text>
-
-  <!-- Customer Info -->
-  <g transform="translate(${paddingX + 45}, 435)">
-    <text x="0" y="0" font-family="${fontStack}" font-weight="900" font-size="25" fill="#0f172a">👤 Nama: <tspan font-weight="bold" fill="#334155">${escapeXml(data.nama)}</tspan></text>
-    <text x="0" y="38" font-family="${fontStack}" font-weight="900" font-size="25" fill="#0f172a">📍 Alamat: <tspan font-weight="bold" fill="#334155">${escapeXml(data.alamat)}</tspan></text>
-  </g>
-
-  <!-- Items Container -->
   <g transform="translate(${paddingX + 30}, ${boxY})">
-    <rect x="0" y="0" width="${cardWidth - 60}" height="${itemsHeight}" rx="25" ry="25" fill="#f0f9ff" stroke="#bae6fd" stroke-width="2" />
-    <text x="25" y="42" font-family="${fontStack}" font-weight="900" font-size="24" fill="#0369a1">📦 RINCIAN PESANAN:</text>
-    <g transform="translate(0, 45)">
-      ${itemsSvg}
-    </g>
+    <rect x="0" y="0" width="${cardWidth - 60}" height="${itemsHeight}" rx="25" ry="25" fill="#e0f2f1" opacity="0.6" />
+    <text x="25" y="42" font-family="${fontStack}" font-weight="900" font-size="24" fill="#086788">📦 RINCIAN PESANAN:</text>
+    <g transform="translate(0, 45)">${itemsSvg}</g>
   </g>
-
-  <!-- Dashed Line 1 -->
-  <line x1="${paddingX + 40}" y1="${dash1Y}" x2="${paddingX + cardWidth - 40}" y2="${dash1Y}" stroke="#0ea5e9" stroke-width="4" stroke-dasharray="15,10" stroke-linecap="round" opacity="0.6" />
-
-  <!-- Total Section -->
+  <line x1="${paddingX + 40}" y1="${dash1Y}" x2="${paddingX + cardWidth - 40}" y2="${dash1Y}" stroke="#086788" stroke-width="4" stroke-dasharray="15,10" stroke-linecap="round" />
   <g transform="translate(${paddingX + 45}, ${totalBadgeY})">
     <rect x="0" y="0" width="420" height="65" rx="20" fill="#ccfbf1" />
-    <text x="25" y="44" font-family="${fontStack}" font-weight="900" font-size="28" fill="#0f766e">💳 TOTAL: ${escapeXml(data.total)}</text>
+    <text x="25" y="44" font-family="${fontStack}" font-weight="900" font-size="28" fill="#064e6f">💳 TOTAL: ${escapeXml(data.total)}</text>
   </g>
-
-  <!-- Status & Delivery -->
   <g transform="translate(${paddingX + 45}, ${statusY})">
-    <text x="0" y="0" font-family="${fontStack}" font-weight="900" font-size="26" fill="#0f172a">
-      🏷️ STATUS: <tspan fill="${statusColor}" font-weight="900">${escapeXml(data.status)}</tspan>
-    </text>
-    <text x="0" y="42" font-family="${fontStack}" font-weight="900" font-size="26" fill="#0f172a">🚚 PENGIRIMAN: <tspan fill="#334155">${escapeXml(data.pengiriman)}</tspan></text>
+    <text x="0" y="0" font-family="${fontStack}" font-weight="900" font-size="26" fill="#0f172a">🏷️ STATUS: <tspan fill="${statusColor}" font-weight="900">${escapeXml(data.status)}</tspan></text>
+    <text x="0" y="42" font-family="${fontStack}" font-weight="900" font-size="26" fill="#0f172a">🚚 PENGIRIMAN: ${escapeXml(data.pengiriman)}</text>
   </g>
-
-  <!-- Dashed Line 2 -->
-  <line x1="${paddingX + 40}" y1="${dash2Y}" x2="${paddingX + cardWidth - 40}" y2="${dash2Y}" stroke="#0ea5e9" stroke-width="4" stroke-dasharray="15,10" stroke-linecap="round" opacity="0.6" />
-
-  <!-- Footer -->
+  <line x1="${paddingX + 40}" y1="${dash2Y}" x2="${paddingX + cardWidth - 40}" y2="${dash2Y}" stroke="#086788" stroke-width="4" stroke-dasharray="15,10" stroke-linecap="round" />
   <g transform="translate(${width / 2}, ${footerY})">
-    <text x="0" y="0" text-anchor="middle" font-family="${fontStack}" font-style="italic" font-weight="900" font-size="26" fill="#0c4a6e">“PAKAIAN BERSIH, HATI SENANG”</text>
-    <text x="0" y="38" text-anchor="middle" font-family="${fontStack}" font-weight="bold" font-size="22" fill="#64748b">${escapeXml(data.eventText)}</text>
+    <text x="0" y="0" text-anchor="middle" font-family="${fontStack}" font-style="italic" font-weight="900" font-size="28" fill="#0f172a">“PAKAIAN BERSIH, HATI SENANG”</text>
+    <text x="0" y="40" text-anchor="middle" font-family="${fontStack}" font-weight="bold" font-size="22" fill="#334155">${escapeXml(data.eventText)}</text>
   </g>
 </svg>
 `;
