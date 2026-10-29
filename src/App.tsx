@@ -1,9 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { get, set } from 'idb-keyval';
 import { motion, AnimatePresence } from 'motion/react';
-import html2canvas from 'html2canvas';
-import { toJpeg } from 'html-to-image';
-import { generateReceiptCardImage } from './utils/receiptCanvas';
 import { 
   Printer, 
   Send, 
@@ -19,14 +16,8 @@ import {
   AlertCircle,
   ChevronDown,
   ShoppingBag,
-  Share2,
   MessageCircle,
-  FileText,
-  Calendar,
-  Eye,
   Wifi,
-  Download,
-  Image as ImageIcon,
   Save
 } from 'lucide-react';
 
@@ -52,7 +43,29 @@ interface WaBotConfig {
   ip: string;
 }
 
-const DEFAULT_BOT_URL = 'https://ais-pre-ekp4iw4jzmx6xm4x6djji6-671441126012.asia-southeast1.run.app';
+export interface PesananItemPayload {
+  nama_layanan: string;
+  qty: string;
+  harga_satuan: number;
+  subtotal: number;
+}
+
+export interface PesananPayload {
+  no_nota: string;
+  nama_pelanggan: string;
+  nomor_wa: string;
+  alamat: string;
+  rincian: PesananItemPayload[];
+  total: number;
+  status_bayar: string;
+  pengiriman: string;
+  catatan_footer: string;
+  phone?: string;
+  message?: string;
+  caption?: string;
+}
+
+const DEFAULT_BOT_URL = 'https://e4-store.my.id';
 
 const SERVICES_CATALOG = [
   { group: 'KILOAN', items: [
@@ -85,10 +98,9 @@ const SERVICES_CATALOG = [
 
 export const getWAGreeting = (date: Date = new Date()): string => {
   const hour = date.getHours();
-  if (hour >= 4 && hour < 11) return 'Selamat pagi';
+  if (hour >= 5 && hour < 11) return 'Selamat pagi';
   if (hour >= 11 && hour < 15) return 'Selamat siang';
   if (hour >= 15 && hour < 18) return 'Selamat sore';
-  if (hour >= 18 && hour < 19) return 'Selamat petang';
   return 'Selamat malam';
 };
 
@@ -103,185 +115,6 @@ export const getWACaption = (deliveryType: string = 'ANTAR JEMPUT', date: Date =
 export const formatReceiptDateOnly = (timeStr: string) => {
   if (!timeStr) return '';
   return timeStr.replace(/^[A-Za-z]+,\s*/, '').replace(/\s*pukul\s*/, ' ').trim();
-};
-
-interface ReceiptCardProps {
-  notaId: string;
-  customer: CustomerInfo;
-  cart: Service[];
-  total: number;
-  time: string;
-  eventText: string;
-}
-
-const ReceiptCard = ({ notaId, customer, cart, total, time, eventText }: ReceiptCardProps) => {
-  const formattedTime = formatReceiptDateOnly(time);
-  const isLunas = customer.status === 'LUNAS';
-
-  return (
-    <div 
-      className="relative bg-white rounded-[26px] border-[3.5px] border-[#086788] p-6 text-slate-800 shadow-md select-none overflow-hidden"
-      style={{
-        backgroundColor: '#ffffff',
-        borderColor: '#086788',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      }}
-    >
-      {/* 4 Corner Ornaments */}
-      <div className="absolute top-2 left-2 w-9 h-9 pointer-events-none">
-        <svg viewBox="0 0 36 36" className="w-full h-full text-[#086788]" fill="none">
-          <path d="M 3 33 C 3 16.4 16.4 3 33 3" stroke="#086788" strokeWidth="2.5" />
-          <circle cx="10" cy="10" r="3.5" fill="#086788" />
-        </svg>
-      </div>
-      <div className="absolute top-2 right-2 w-9 h-9 pointer-events-none">
-        <svg viewBox="0 0 36 36" className="w-full h-full text-[#086788]" fill="none">
-          <path d="M 33 33 C 33 16.4 19.6 3 3 3" stroke="#086788" strokeWidth="2.5" />
-          <circle cx="26" cy="10" r="3.5" fill="#086788" />
-        </svg>
-      </div>
-      <div className="absolute bottom-2 left-2 w-9 h-9 pointer-events-none">
-        <svg viewBox="0 0 36 36" className="w-full h-full text-[#086788]" fill="none">
-          <path d="M 3 3 C 3 19.6 16.4 33 33 33" stroke="#086788" strokeWidth="2.5" />
-          <circle cx="10" cy="26" r="3.5" fill="#086788" />
-        </svg>
-      </div>
-      <div className="absolute bottom-2 right-2 w-9 h-9 pointer-events-none">
-        <svg viewBox="0 0 36 36" className="w-full h-full text-[#086788]" fill="none">
-          <path d="M 33 3 C 33 19.6 19.6 33 3 33" stroke="#086788" strokeWidth="2.5" />
-          <circle cx="26" cy="26" r="3.5" fill="#086788" />
-        </svg>
-      </div>
-
-      {/* Header Logo & Brand */}
-      <div className="text-center pt-1 pb-2">
-        <div className="flex items-center justify-center gap-3">
-          <div className="w-14 h-14 shrink-0">
-            <svg viewBox="0 0 64 64" className="w-full h-full" fill="none">
-              <circle cx="12" cy="16" r="3.5" fill="#38bdf8" />
-              <circle cx="19" cy="10" r="2.5" fill="#38bdf8" />
-              <circle cx="50" cy="14" r="3" fill="#38bdf8" />
-              <path d="M32 6 C30 6 28 8 28 10 C28 12 30 13 32 14 L18 22 L46 22 Z" stroke="#086788" strokeWidth="2.5" strokeLinejoin="round" fill="none" />
-              <rect x="14" y="21" width="36" height="38" rx="7" fill="#0b7285" />
-              <circle cx="22" cy="26" r="2" fill="#ffffff" />
-              <line x1="27" y1="26" x2="43" y2="26" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="32" cy="41" r="11" fill="#e0f7fa" stroke="#ffffff" strokeWidth="2.5" />
-              <circle cx="32" cy="41" r="7" fill="#0b7285" opacity="0.6" />
-            </svg>
-          </div>
-          <h1 className="text-[25px] font-black tracking-tight text-[#073b61] leading-none uppercase">
-            LAUNDRY TANTE TIKA
-          </h1>
-        </div>
-        
-        <p className="text-[12px] font-bold text-slate-800 mt-1.5 leading-snug">
-          Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan
-        </p>
-        <p className="text-[13px] font-bold text-slate-800">
-          WA: 0851-6994-9219
-        </p>
-
-        {/* Divider with double lines */}
-        <div className="w-full flex items-center justify-center my-2 gap-2 px-2">
-          <div className="h-[2px] bg-[#086788] flex-1 opacity-70"></div>
-          <div className="w-1.5 h-1.5 rotate-45 bg-[#086788]"></div>
-          <div className="h-[2px] bg-[#086788] flex-1 opacity-70"></div>
-        </div>
-      </div>
-
-      {/* Nota ID & Waktu */}
-      <div className="text-center my-1.5">
-        <h2 className="text-[28px] font-black italic tracking-wide text-slate-900 font-serif">
-          Nota #LT-{notaId}
-        </h2>
-        <div className="flex items-center justify-center gap-1.5 text-[15px] font-bold text-slate-800 mt-0.5">
-          <span>🗓️</span>
-          <span>Waktu: {formattedTime}</span>
-        </div>
-      </div>
-
-      {/* Customer Info */}
-      <div className="my-3 space-y-1 px-1">
-        <div className="flex items-center gap-2 text-[17px] font-black text-slate-900">
-          <span className="text-xl">👤</span>
-          <span>Nama: {customer.name.trim() ? customer.name.toUpperCase() : '-'}</span>
-        </div>
-        <div className="flex items-center gap-2 text-[17px] font-black text-slate-900">
-          <span className="text-xl">📍</span>
-          <span>Alamat: {customer.address.trim() ? customer.address.toUpperCase() : '-'}</span>
-        </div>
-      </div>
-
-      {/* Rincian Pesanan Box */}
-      <div 
-        className="rounded-2xl p-4 my-3"
-        style={{ backgroundColor: '#e6f4f8' }}
-      >
-        <div className="text-[17px] font-black text-[#086788] mb-2 flex items-center gap-1.5 tracking-wide">
-          <span>📦</span>
-          <span>RINCIAN PESANAN:</span>
-        </div>
-
-        <div className="space-y-2.5">
-          {cart.length === 0 ? (
-            <p className="text-sm italic text-slate-500">- Belum ada rincian pesanan -</p>
-          ) : (
-            cart.map((item, idx) => (
-              <div key={idx} className="space-y-0.5">
-                <div className="text-[16px] font-black text-slate-900 uppercase">
-                  ▪ {item.name}
-                </div>
-                <div className="text-[15px] font-bold text-slate-800 pl-4 font-mono">
-                  {item.qty} {item.unit.toUpperCase()} x Rp {item.price.toLocaleString('id-ID')} = Rp {item.subtotal.toLocaleString('id-ID')}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Dashed Divider */}
-      <div className="border-b-[4px] border-dashed border-[#086788] my-3.5 w-full opacity-80"></div>
-
-      {/* Total & Status & Pengiriman */}
-      <div className="px-1 space-y-2.5">
-        <div 
-          className="px-4 py-2 rounded-xl inline-block font-black text-[22px] tracking-tight shadow-xs"
-          style={{ backgroundColor: '#d1f4e7', color: '#064e6f' }}
-        >
-          💳 TOTAL: Rp {total.toLocaleString('id-ID')}
-        </div>
-
-        <div className="text-[18px] font-black flex items-center gap-1.5">
-          <span>🏷</span>
-          <span>STATUS: </span>
-          <span className={isLunas ? 'text-emerald-600' : 'text-rose-500'}>
-            {customer.status}
-          </span>
-        </div>
-
-        <div className="text-[18px] font-black text-slate-900 flex items-center gap-1.5">
-          <span>🚚</span>
-          <span>PENGIRIMAN: {customer.delivery}</span>
-        </div>
-      </div>
-
-      {/* Dashed Divider */}
-      <div className="border-b-[4px] border-dashed border-[#086788] my-3.5 w-full opacity-80"></div>
-
-      {/* Footer Quote & Event */}
-      <div className="text-center pt-0.5 pb-2">
-        <p className="text-[18px] font-black italic tracking-wide text-slate-900 font-serif">
-          “PAKAIAN BERSIH, HATI SENANG”
-        </p>
-        {eventText && (
-          <p className="text-[14px] font-bold text-slate-800 mt-1">
-            {eventText}
-          </p>
-        )}
-      </div>
-    </div>
-  );
 };
 
 import { LOGO_DATA } from './logoData';
@@ -309,7 +142,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [showCustomerList, setShowCustomerList] = useState(false);
 
   const [history, setHistory] = useState<any[]>(() => {
@@ -317,7 +149,6 @@ export default function App() {
     if (!saved) return [];
     try {
       const parsed = JSON.parse(saved);
-      // Deduplicate by ID
       const uniqueMap = new Map();
       parsed.forEach((item: any) => {
         if (!uniqueMap.has(item.id)) {
@@ -331,7 +162,6 @@ export default function App() {
   });
 
   useEffect(() => {
-    // Load from IndexedDB on startup
     const loadFromIDB = async () => {
       try {
         const idbHistory = await get('tt_laundry_history');
@@ -348,9 +178,13 @@ export default function App() {
 
         const idbBotConfig = await get('tt_wa_bot_config');
         if (idbBotConfig) {
+          let resolvedIp = (idbBotConfig.ip && idbBotConfig.ip.trim()) ? idbBotConfig.ip : DEFAULT_BOT_URL;
+          if (resolvedIp.includes('run.app') || resolvedIp.includes('ais-pre')) {
+            resolvedIp = DEFAULT_BOT_URL;
+          }
           setWaBotConfig(prev => ({
             enabled: idbBotConfig.enabled !== undefined ? idbBotConfig.enabled : prev.enabled,
-            ip: (idbBotConfig.ip && idbBotConfig.ip.trim()) ? idbBotConfig.ip : (prev.ip || DEFAULT_BOT_URL)
+            ip: resolvedIp
           }));
         }
       } catch (err) {
@@ -365,16 +199,21 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        let resolvedIp = (parsed.ip && parsed.ip.trim()) ? parsed.ip : DEFAULT_BOT_URL;
+        if (resolvedIp.includes('run.app') || resolvedIp.includes('ais-pre')) {
+          resolvedIp = DEFAULT_BOT_URL;
+        }
         return {
           enabled: parsed.enabled !== undefined ? parsed.enabled : true,
-          ip: (parsed.ip && parsed.ip.trim()) ? parsed.ip : DEFAULT_BOT_URL
+          ip: resolvedIp
         };
       } catch (e) {
-        // ignore parse error
+        // ignore
       }
     }
     return { enabled: true, ip: DEFAULT_BOT_URL };
   });
+
   const [showBotModal, setShowBotModal] = useState(false);
   const [botStatus, setBotStatus] = useState<{
     checked: boolean;
@@ -389,12 +228,7 @@ export default function App() {
   const [isSendingWA, setIsSendingWA] = useState(false);
   const [testPhoneInput, setTestPhoneInput] = useState('');
   const [pairingPhoneInput, setPairingPhoneInput] = useState('085169949219');
-  const [botAuthTab, setBotAuthTab] = useState<'qr' | 'code'>('qr');
   const [isRequestingCode, setIsRequestingCode] = useState(false);
-  const receiptCardRef = useRef<HTMLDivElement>(null);
-  const [showImagePreview, setShowImagePreview] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('tt_wa_bot_config', JSON.stringify(waBotConfig));
@@ -450,11 +284,11 @@ export default function App() {
     };
     
     setHistory(prev => {
-      // Use String conversion to guarantee we don't fail on type mismatch
       const filtered = prev.filter((r: any) => String(r.id) !== String(notaId));
       return [record, ...filtered].slice(0, 50);
     });
   };
+
   const [selectedServiceIndex, setSelectedServiceIndex] = useState(-1);
   const [inputQty, setInputQty] = useState<string>('');
   const [modal, setModal] = useState<{ title: string; message: string; visible: boolean }>({
@@ -468,7 +302,6 @@ export default function App() {
     visible: false,
     onConfirm: () => {}
   });
-  const [bleCharacteristic, setBleCharacteristic] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const [isOnline, setIsOnline] = useState(true);
   const [showServiceModal, setShowServiceModal] = useState(false);
@@ -504,7 +337,6 @@ export default function App() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const currentYear = now.getFullYear();
 
-    // Daftar Hari Besar & Peringatan Nasional Resmi Indonesia (Tanggal Tetap)
     const fixedHolidays = [
       { name: 'Tahun Baru Masehi', m: 0, d: 1 },
       { name: 'Hari Pers Nasional', m: 1, d: 9 },
@@ -540,9 +372,7 @@ export default function App() {
       { name: 'Hari Raya Natal', m: 11, d: 25 },
     ];
 
-    // Daftar Hari Libur & Hari Besar Keagamaan Nasional (Moving Holidays)
     const movingHolidays = [
-      // 2024
       { name: 'Isra Mikraj', date: new Date(2024, 1, 8) },
       { name: 'Tahun Baru Imlek', date: new Date(2024, 1, 10) },
       { name: 'Hari Suci Nyepi', date: new Date(2024, 2, 11) },
@@ -556,7 +386,6 @@ export default function App() {
       { name: 'Tahun Baru Islam', date: new Date(2024, 6, 7) },
       { name: 'Maulid Nabi Muhammad SAW', date: new Date(2024, 8, 16) },
 
-      // 2025
       { name: 'Isra Mikraj', date: new Date(2025, 0, 27) },
       { name: 'Tahun Baru Imlek', date: new Date(2025, 0, 29) },
       { name: 'Hari Suci Nyepi', date: new Date(2025, 2, 29) },
@@ -570,7 +399,6 @@ export default function App() {
       { name: 'Tahun Baru Islam', date: new Date(2025, 5, 27) },
       { name: 'Maulid Nabi Muhammad SAW', date: new Date(2025, 8, 5) },
 
-      // 2026
       { name: 'Isra Mikraj', date: new Date(2026, 0, 16) },
       { name: 'Tahun Baru Imlek', date: new Date(2026, 1, 17) },
       { name: 'Hari Suci Nyepi', date: new Date(2026, 2, 19) },
@@ -584,7 +412,6 @@ export default function App() {
       { name: 'Tahun Baru Islam', date: new Date(2026, 5, 16) },
       { name: 'Maulid Nabi Muhammad SAW', date: new Date(2026, 7, 25) },
 
-      // 2027
       { name: 'Isra Mikraj', date: new Date(2027, 1, 5) },
       { name: 'Tahun Baru Imlek', date: new Date(2027, 1, 6) },
       { name: 'Hari Suci Nyepi', date: new Date(2027, 2, 8) },
@@ -598,7 +425,6 @@ export default function App() {
     ];
 
     const allEvents = [...movingHolidays];
-    // Masukkan tanggal-tanggal peringatan nasional tetap untuk tahun berjalan dan sekitarnya
     for (let y = currentYear - 1; y <= currentYear + 2; y++) {
       for (const h of fixedHolidays) {
         allEvents.push({ name: h.name, date: new Date(y, h.m, h.d) });
@@ -691,23 +517,21 @@ export default function App() {
         console.log("Bluetooth enabled check:", e);
       }
 
-      // Daftar UUID layanan printer thermal yang umum di pasaran
       const OPTIONAL_PRINTER_SERVICES = [
-        '000018f0-0000-1000-8000-00805f9b34fb', // Standard POS thermal printer
-        '0000e781-0000-1000-8000-00805f9b34fb', // MPT-II, PT-210, Panda, POS-58
-        '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC transparent UART
-        '0000ff00-0000-1000-8000-00805f9b34fb', // General BLE Serial POS
-        '0000fff0-0000-1000-8000-00805f9b34fb', // General BLE Serial POS
-        '0000ae30-0000-1000-8000-00805f9b34fb', // Zebra / Generic
+        '000018f0-0000-1000-8000-00805f9b34fb',
+        '0000e781-0000-1000-8000-00805f9b34fb',
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+        '0000ff00-0000-1000-8000-00805f9b34fb',
+        '0000fff0-0000-1000-8000-00805f9b34fb',
+        '0000ae30-0000-1000-8000-00805f9b34fb',
         'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
         '0000ff80-0000-1000-8000-00805f9b34fb',
         '0000feea-0000-1000-8000-00805f9b34fb',
         '0000af30-0000-1000-8000-00805f9b34fb',
-        '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10 / CC2541 BLE module
-        '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART Service (NUS)
+        '0000ffe0-0000-1000-8000-00805f9b34fb',
+        '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
       ];
 
-      // Request device TANPA filter services agar SEMUA perangkat Bluetooth/Printer thermal terdeteksi
       const device = await BleClient.requestDevice({
         optionalServices: OPTIONAL_PRINTER_SERVICES,
       });
@@ -715,7 +539,6 @@ export default function App() {
       showModal("Mencetak...", `Menghubungkan ke printer ${device.name || 'Bluetooth'}...`);
       await BleClient.connect(device.deviceId, undefined, { timeout: 15000 });
 
-      // Deteksi service & characteristic write secara dinamis dari printer
       let targetService = '';
       let targetChar = '';
       let isWithoutResponse = false;
@@ -735,7 +558,6 @@ export default function App() {
 
       try {
         const discovered = await BleClient.getServices(device.deviceId);
-        // Prioritas 1: Cari characteristic printer yang sudah dikenal
         for (const s of discovered) {
           for (const c of s.characteristics) {
             if (KNOWN_WRITE_CHARS.includes(c.uuid.toLowerCase())) {
@@ -748,7 +570,6 @@ export default function App() {
           if (targetService) break;
         }
 
-        // Prioritas 2: Jika belum ketemu, cari characteristic apapun yang memiliki write / writeWithoutResponse
         if (!targetService) {
           for (const s of discovered) {
             const sUuid = s.uuid.toLowerCase();
@@ -768,24 +589,19 @@ export default function App() {
         console.warn("Gagal deteksi services otomatis, menggunakan default:", err);
       }
 
-      // Default fallback jika tidak ditemukan
       if (!targetService || !targetChar) {
         targetService = '000018f0-0000-1000-8000-00805f9b34fb';
         targetChar = '00002af1-0000-1000-8000-00805f9b34fb';
       }
 
-      // Format Waktu agar lebih singkat di kertas
       let printTime = currentTime.replace(' pukul ', ' ').substring(0, 32);
       
       let text = "\x1B\x40\x1B\x61\x01\x1B\x45\x01LAUNDRY TANTE TIKA\n\x1B\x45\x00";
       text += "Jl. Zamrud Depan Gg. Zamrud 2\nRT 42, Bontang Selatan\n";
       text += "WA: +62 851-6994-9219\n\n";
-      
-      // Pembatas putus-putus 32 karakter (standar 58mm printer)
       text += "--------------------------------\n\x1B\x61\x00";
       
-      // Fungsi untuk memastikan teks rata kiri dengan padding
-      const padR = (str, len) => (str || "-").substring(0, len).padEnd(len, ' ');
+      const padR = (str: string, len: number) => (str || "-").substring(0, len).padEnd(len, ' ');
       
       text += padR("Nota : #LT-" + notaId, 32) + "\n";
       text += padR("Tgl  : " + printTime, 32) + "\n";
@@ -795,16 +611,13 @@ export default function App() {
       text += "--------------------------------\n";
 
       cart.forEach(i => {
-        // Nama layanan
         text += padR(i.name, 32) + "\n";
-        
-        // Rincian (QTY x Harga = Subtotal)
         let qtyText = i.qty + " " + i.unit.toUpperCase();
         let priceText = "Rp " + i.price.toLocaleString();
         let subtotalText = "Rp " + i.subtotal.toLocaleString();
         
         let detailLine = qtyText + " x " + priceText;
-        let spacesNeeded = 32 - detailLine.length - subtotalText.length - 3; // " = " = 3 chars
+        let spacesNeeded = 32 - detailLine.length - subtotalText.length - 3;
         if (spacesNeeded < 0) spacesNeeded = 0;
         
         text += detailLine + " = " + " ".repeat(spacesNeeded) + subtotalText + "\n";
@@ -824,7 +637,7 @@ export default function App() {
 
       const encoder = new TextEncoder();
       const data = encoder.encode(text);
-      const chunkSize = 20; // 20 bytes aman untuk semua jenis Bluetooth LE buffer
+      const chunkSize = 20;
       for (let i = 0; i < data.length; i += chunkSize) {
         const chunk = data.slice(i, i + chunkSize);
         const dataView = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength);
@@ -833,7 +646,7 @@ export default function App() {
         } else {
           await BleClient.write(device.deviceId, targetService, targetChar, dataView);
         }
-        await new Promise(r => setTimeout(r, 25)); // Jeda agar printer buffer tidak overload
+        await new Promise(r => setTimeout(r, 25));
       }
 
       await new Promise(r => setTimeout(r, 300));
@@ -862,7 +675,7 @@ export default function App() {
     }
     url = url.replace(/\/+$/, '');
     if (!/^https?:\/\//i.test(url)) {
-      if (url.includes('.run.app') || url.includes('cloudrun') || url.includes('.app')) {
+      if (url.includes('.run.app') || url.includes('cloudrun') || url.includes('.app') || url.includes('.id') || url.includes('.com') || url.includes('.net')) {
         url = 'https://' + url;
       } else {
         url = 'http://' + url;
@@ -898,20 +711,30 @@ export default function App() {
     if (!silent) setIsCheckingBot(true);
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(`${baseUrl}/status`, {
+      const timer = setTimeout(() => controller.abort(), 5000);
+      
+      let res = await fetch(`${baseUrl}/status`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
         signal: controller.signal
-      });
-      clearTimeout(timer);
-      const data = await res.json().catch(() => ({}));
+      }).catch(() => null);
 
-      const isConnected = !!(data.connected === true || data.status === 'connected' || data.connected === 'true');
+      if (!res || !res.ok) {
+        res = await fetch(`${baseUrl}/api/status`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal
+        }).catch(() => null);
+      }
+
+      clearTimeout(timer);
+      const data = res ? await res.json().catch(() => ({})) : {};
+
+      const isConnected = !!(data.connected === true || data.status === 'connected' || data.connected === 'true' || res?.ok);
       const botNum = data.botNumber || data.phone || data.number || '';
       const botName = data.name || data.pushname || '';
 
-      if (res.ok && isConnected) {
+      if (res && res.ok && isConnected) {
         setBotStatus({
           checked: true,
           connected: true,
@@ -1035,150 +858,143 @@ export default function App() {
     }
   };
 
-  const generateReceiptImage = async (): Promise<string | null> => {
+  // Fungsi yang dijalankan saat tombol "Kirim ke WhatsApp" ditekan
+  const kirimNotaKeServerBot = async (dataPesanan: any) => {
+    const SERVER_BOT_URL = getBotBaseUrl(waBotConfig.ip) || DEFAULT_BOT_URL;
+    const delivery = dataPesanan?.pengiriman || customer.delivery || 'ANTAR JEMPUT';
+    const caption = getWACaption(delivery);
+
+    const payload: PesananPayload = {
+      no_nota: dataPesanan?.no_nota || `LT-${notaId}`,
+      nama_pelanggan: dataPesanan?.nama_pelanggan || (customer.name.trim() ? customer.name.toUpperCase() : 'PELANGGAN'),
+      nomor_wa: dataPesanan?.nomor_wa || customer.phone.replace(/[^0-9]/g, ''),
+      alamat: dataPesanan?.alamat || (customer.address.trim() ? customer.address.toUpperCase() : 'ZAMRUD'),
+      rincian: dataPesanan?.rincian || (
+        cart.length > 0 
+          ? cart.map(i => ({
+              nama_layanan: i.name,
+              qty: `${i.qty} ${i.unit.toUpperCase()}`,
+              harga_satuan: i.price,
+              subtotal: i.subtotal
+            }))
+          : [
+              {
+                nama_layanan: "SETRIKA (KILOAN)",
+                qty: "4.45 KG",
+                harga_satuan: 5000,
+                subtotal: 22250
+              }
+            ]
+      ),
+      total: dataPesanan?.total !== undefined ? dataPesanan.total : (total || 22250),
+      status_bayar: dataPesanan?.status_bayar || dataPesanan?.status || customer.status || "BELUM LUNAS",
+      pengiriman: delivery,
+      caption: dataPesanan?.caption || caption,
+      catatan_footer: dataPesanan?.catatan_footer || upcomingEventText || "Hari Sumpah Pemuda (1 hari lagi)"
+    };
+
     try {
-      // Prioritas 1: Gunakan HTML5 Canvas 2D Engine (100% instan, tanpa DOM dependency, tidak pernah gagal atau terpotong di HP)
-      const canvasImg = generateReceiptCardImage({
-        notaId,
-        customer,
-        cart,
-        total,
-        time: currentTime,
-        eventText: upcomingEventText
+      const response = await fetch(`${SERVER_BOT_URL}/api/laundry/kirim-nota`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-      if (canvasImg && canvasImg.length > 500) {
-        console.log('Gambar nota sukses dibuat via Canvas 2D Engine, ukuran base64:', canvasImg.length);
-        return canvasImg;
-      }
-    } catch (errCanvas) {
-      console.warn('Canvas generator warning, mencoba fallback:', errCanvas);
-    }
 
-    if (receiptCardRef.current) {
-      try {
-        // Fallback 1: html-to-image
-        const dataUrl = await toJpeg(receiptCardRef.current, {
-          quality: 0.9,
-          backgroundColor: '#ffffff',
-          pixelRatio: 2,
-          cacheBust: true
-        });
-        if (dataUrl && dataUrl.length > 500) {
-          console.log('Gambar nota sukses dibuat via html-to-image, ukuran base64:', dataUrl.length);
-          return dataUrl;
-        }
-      } catch (err1) {
-        console.warn('html-to-image gagal, mencoba fallback html2canvas:', err1);
-      }
-
-      try {
-        // Fallback 2: html2canvas
-        const canvas = await html2canvas(receiptCardRef.current, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false
-        });
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        if (dataUrl && dataUrl.length > 500) {
-          console.log('Gambar nota sukses dibuat via html2canvas, ukuran base64:', dataUrl.length);
-          return dataUrl;
-        }
-      } catch (err2) {
-        console.warn('Fallback html2canvas juga gagal:', err2);
-      }
-    }
-    return null;
-  };
-
-  const handlePreviewImageCard = async () => {
-    if (cart.length === 0) {
-      showModal("Layanan Kosong", "Pilih minimal 1 layanan sebelum melihat pratinjau nota gambar.");
-      return;
-    }
-    setIsGeneratingImage(true);
-    try {
-      const img = await generateReceiptImage();
-      if (img) {
-        setPreviewImage(img);
-        setShowImagePreview(true);
+      const hasil = await response.json().catch(() => ({ success: response.ok }));
+      if (hasil.success) {
+        showModal("Nota Terkirim ✅", "✅ Nota berhasil dibuat di server & langsung terkirim ke WhatsApp pelanggan!");
+        return true;
       } else {
-        showModal("Gagal Pratinjau", "Tidak dapat merender tampilan gambar nota.");
+        showModal("Peringatan ⚠️", "⚠️ Gagal: " + (hasil.message || "Gagal memproses nota"));
+        return false;
       }
-    } finally {
-      setIsGeneratingImage(false);
+    } catch (err) {
+      console.error("Gagal koneksi ke server bot:", err);
+      showModal("Koneksi Gagal ❌", "❌ Tidak dapat terhubung ke Server Bot!");
+      return false;
     }
   };
+
+  useEffect(() => {
+    (window as any).kirimNotaKeServerBot = kirimNotaKeServerBot;
+  }, [waBotConfig.ip, customer, cart, total, notaId, upcomingEventText]);
 
   const sendViaBotOrFallback = async (
     cleanPhone: string, 
     textMessage: string,
-    imageBase64?: string | null,
-    caption?: string
-  ): Promise<{ sentViaBot: boolean; usedFallback: boolean; sentAsImage: boolean }> => {
-    const baseUrl = getBotBaseUrl(waBotConfig.ip);
+    caption?: string,
+    orderData?: Partial<PesananPayload>
+  ): Promise<{ sentViaBot: boolean; usedFallback: boolean; serverMessage?: string }> => {
+    const baseUrl = getBotBaseUrl(waBotConfig.ip) || DEFAULT_BOT_URL;
+    const delivery = orderData?.pengiriman || customer.delivery || 'ANTAR JEMPUT';
+    const finalCaption = caption || getWACaption(delivery);
 
-    // Jika Mode Bot ON, URL server bot ada, dan Nomor WA pelanggan ada -> Kirim otomatis via Bot Server
     if (waBotConfig.enabled && baseUrl && cleanPhone) {
       setIsSendingWA(true);
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 20000);
 
-        const payload: {
-          phone: string;
-          message: string;
-          imageBase64?: string;
-          image?: string;
-          caption?: string;
-        } = {
+        const structuredPayload: PesananPayload = {
+          no_nota: orderData?.no_nota || `LT-${notaId}`,
+          nama_pelanggan: orderData?.nama_pelanggan || (customer.name.trim() ? customer.name.toUpperCase() : '-'),
+          nomor_wa: orderData?.nomor_wa || cleanPhone,
+          alamat: orderData?.alamat || (customer.address.trim() ? customer.address.toUpperCase() : '-'),
+          rincian: orderData?.rincian || cart.map(item => ({
+            nama_layanan: item.name,
+            qty: `${item.qty} ${item.unit.toUpperCase()}`,
+            harga_satuan: item.price,
+            subtotal: item.subtotal
+          })),
+          total: orderData?.total !== undefined ? orderData.total : total,
+          status_bayar: orderData?.status_bayar || customer.status || 'BELUM LUNAS',
+          pengiriman: delivery,
+          caption: finalCaption,
+          catatan_footer: orderData?.catatan_footer || upcomingEventText || 'Pakaian Bersih, Hati Senang',
           phone: cleanPhone,
           message: textMessage
         };
 
-        if (imageBase64) {
-          payload.imageBase64 = imageBase64;
-          payload.image = imageBase64;
-        }
-        if (caption) {
-          payload.caption = caption;
-        }
-
-        const res = await fetch(`${baseUrl}/send`, {
+        const res = await fetch(`${baseUrl}/api/laundry/kirim-nota`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(structuredPayload),
           signal: controller.signal
-        });
+        }).catch(() => null);
+
         clearTimeout(timer);
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.success) {
-          setIsSendingWA(false);
-          return { sentViaBot: true, usedFallback: false, sentAsImage: !!data.hasImage };
+
+        if (res && res.ok) {
+          const data = await res.json().catch(() => ({ success: true }));
+          if (data.success !== false) {
+            setIsSendingWA(false);
+            return { 
+              sentViaBot: true, 
+              usedFallback: false, 
+              serverMessage: data.message
+            };
+          }
         }
       } catch (err) {
         console.warn('Server Bot WhatsApp tidak terjangkau, otomatis beralih ke WhatsApp biasa (wa.me):', err);
       }
       setIsSendingWA(false);
 
-      // Fallback otomatis ke aplikasi WhatsApp biasa jika Server Bot offline / timeout
-      const fallbackText = caption ? `${caption}\n\n${textMessage}` : textMessage;
+      const fallbackText = `${finalCaption}\n\n${textMessage}`;
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(fallbackText)}`, '_blank');
-      return { sentViaBot: false, usedFallback: true, sentAsImage: false };
+      return { sentViaBot: false, usedFallback: true };
     }
 
-    // Mode manual (Bot OFF atau nomor tidak diisi) -> Fallback ke WhatsApp biasa
-    const manualText = caption ? `${caption}\n\n${textMessage}` : textMessage;
+    const manualText = `${finalCaption}\n\n${textMessage}`;
     if (cleanPhone) {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(manualText)}`, '_blank');
     } else {
       window.open(`https://wa.me/?text=${encodeURIComponent(manualText)}`, '_blank');
     }
-    return { sentViaBot: false, usedFallback: false, sentAsImage: false };
+    return { sentViaBot: false, usedFallback: false };
   };
 
   const handleTestBotMessage = async () => {
@@ -1191,32 +1007,47 @@ export default function App() {
       return;
     }
 
-    const baseUrl = getBotBaseUrl(waBotConfig.ip);
-    if (!baseUrl) {
-      showModal('Server Kosong', 'Alamat server bot belum terisi.');
-      return;
-    }
-
+    const baseUrl = getBotBaseUrl(waBotConfig.ip) || DEFAULT_BOT_URL;
     setIsCheckingBot(true);
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 6000);
-      const res = await fetch(`${baseUrl}/send`, {
+      
+      const testPayload = {
+        phone: cleanPhone,
+        message: `*TES BOT WHATSAPP LAUNDRY TANTE TIKA* ✅\n\nKoneksi antara Aplikasi Kasir dan Server Bot WhatsApp (${baseUrl}) telah terhubung & aktif!`,
+        caption: getWACaption('ANTAR JEMPUT'),
+        no_nota: `LT-${notaId}`,
+        nama_pelanggan: 'TES KONEKSI BOT',
+        nomor_wa: cleanPhone,
+        alamat: 'ZAMRUD',
+        rincian: [
+          {
+            nama_layanan: 'TES SISTEM BOT',
+            qty: '1 PCS',
+            harga_satuan: 0,
+            subtotal: 0
+          }
+        ],
+        total: 0,
+        status_bayar: 'LUNAS',
+        pengiriman: 'ANTAR JEMPUT',
+        catatan_footer: 'Koneksi Berhasil'
+      };
+
+      const res = await fetch(`${baseUrl}/api/laundry/kirim-nota`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          phone: cleanPhone,
-          message: `*TES BOT WHATSAPP LAUNDRY TANTE TIKA* ✅\n\nKoneksi antara Aplikasi Kasir dan Server Bot WhatsApp (${baseUrl}) telah terhubung & aktif!`,
-          caption: 'Tes Bot WhatsApp'
-        }),
+        body: JSON.stringify(testPayload),
         signal: controller.signal
-      });
+      }).catch(() => null);
+
       clearTimeout(timer);
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
+      const data = res ? await res.json().catch(() => ({})) : {};
+      if (res && res.ok && data.success !== false) {
         setBotStatus(prev => ({
           ...prev,
           checked: true,
@@ -1224,9 +1055,9 @@ export default function App() {
           botNumber: data.botNumber || prev.botNumber,
           message: `Tes kirim berhasil ke +${cleanPhone}`
         }));
-        showModal('Berhasil Terkirim!', `Pesan tes berhasil dikirim otomatis oleh Server Bot WhatsApp ke nomor +${cleanPhone}.`);
+        showModal('Berhasil Terkirim!', `Pesan tes berhasil dikirim otomatis oleh Server Bot WhatsApp (${baseUrl}) ke nomor +${cleanPhone}.`);
       } else {
-        showModal('Gagal Kirim Bot', data.error || 'Server Bot belum terhubung ke WhatsApp. Cek status bot.');
+        showModal('Gagal Kirim Bot', data.error || data.message || 'Server Bot belum terhubung ke WhatsApp. Cek status bot.');
       }
     } catch {
       showModal('Gagal Terhubung', `Tidak dapat menghubungi server bot di ${baseUrl}. Transaksi kasir tetap aman menggunakan fallback WA.`);
@@ -1282,25 +1113,33 @@ _"PAKAIAN BERSIH, HATI SENANG"_
     let cleanPhone = customer.phone ? customer.phone.replace(/[^0-9]/g, '') : '';
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
 
-    let imageBase64: string | null = null;
-    if (waBotConfig.enabled) {
-      setIsSendingWA(true);
-      imageBase64 = await generateReceiptImage();
-    }
+    const orderPayload: Partial<PesananPayload> = {
+      no_nota: `LT-${notaId}`,
+      nama_pelanggan: customer.name.trim() ? customer.name.toUpperCase() : '-',
+      nomor_wa: cleanPhone,
+      alamat: customer.address.trim() ? customer.address.toUpperCase() : '-',
+      rincian: cart.map(i => ({
+        nama_layanan: i.name,
+        qty: `${i.qty} ${i.unit.toUpperCase()}`,
+        harga_satuan: i.price,
+        subtotal: i.subtotal
+      })),
+      total: total,
+      status_bayar: customer.status || 'BELUM LUNAS',
+      pengiriman: customer.delivery || 'ANTAR JEMPUT',
+      caption: caption,
+      catatan_footer: upcomingEventText || 'Hari Sumpah Pemuda (1 hari lagi)'
+    };
 
-    const result = await sendViaBotOrFallback(cleanPhone, text, imageBase64, caption);
+    const result = await sendViaBotOrFallback(cleanPhone, text, caption, orderPayload);
 
     saveToHistory();
     resetForm();
 
     if (result.sentViaBot) {
-      if (result.sentAsImage) {
-        showModal("Terkirim via Bot STB ✅", `Nota Gambar (persis seperti contoh) beserta pesan antar otomatis ("${getWAGreeting()}, Kak...") telah berhasil dikirim ke WhatsApp pelanggan!`);
-      } else {
-        showModal("Terkirim via Bot WiFi ✅", "Nota telah dikirim otomatis oleh Bot STB Armbian ke WhatsApp pelanggan dan transaksi disimpan di riwayat.");
-      }
+      showModal("Nota Terkirim Otomatis ✅", result.serverMessage || "Nota berhasil dibuat di server & langsung terkirim ke WhatsApp pelanggan!");
     } else if (result.usedFallback) {
-      showModal("Dialihkan ke WA Biasa", "Bot STB sedang tidak terjangkau di WiFi rumah, nota dan pesan antar otomatis dialihkan membuka aplikasi WhatsApp biasa.");
+      showModal("Dialihkan ke WA Biasa", "Server Bot sedang offline/tidak terjangkau, nota transaksi otomatis dialihkan membuka aplikasi WhatsApp biasa.");
     } else {
       showModal("Berhasil", "Nota telah diteruskan ke WhatsApp dan transaksi disimpan di riwayat.");
     }
@@ -1338,20 +1177,40 @@ ${upcomingEventText}`;
     let cleanPhone = record.customer?.phone ? record.customer.phone.replace(/[^0-9]/g, '') : '';
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
 
-    const result = await sendViaBotOrFallback(cleanPhone, message);
+    const deliveryType = record.customer?.delivery || 'AMBIL SENDIRI';
+    const confirmCaption = getWACaption(deliveryType);
 
-    // Otomatis hapus riwayat transaksi tadi
+    const confirmOrderPayload: Partial<PesananPayload> = {
+      no_nota: `LT-${record.id}`,
+      nama_pelanggan: customerName,
+      nomor_wa: cleanPhone,
+      alamat: record.customer?.address || '-',
+      rincian: items.map((item: any) => ({
+        nama_layanan: item.name,
+        qty: `${item.qty} ${(item.unit || '').toUpperCase()}`,
+        harga_satuan: item.price,
+        subtotal: item.subtotal || (item.price * item.qty)
+      })),
+      total: record.total,
+      status_bayar: 'LUNAS',
+      pengiriman: deliveryType,
+      caption: confirmCaption,
+      catatan_footer: upcomingEventText || 'Pakaian Bersih, Hati Senang'
+    };
+
+    const result = await sendViaBotOrFallback(cleanPhone, message, confirmCaption, confirmOrderPayload);
+
     setHistory(prev => prev.filter((_, i) => i !== idx));
 
     if (result.sentViaBot) {
       showModal(
         "Lunas & Terkirim Otomatis ✅",
-        `Konfirmasi LUNAS untuk kak ${customerName} telah dikirim otomatis lewat Bot WiFi STB, dan riwayat (#LT-${record.id}) telah dihapus.`
+        `Konfirmasi LUNAS untuk kak ${customerName} telah dikirim otomatis lewat Server Bot WhatsApp, dan riwayat (#LT-${record.id}) telah dihapus.`
       );
     } else if (result.usedFallback) {
       showModal(
         "Pembayaran Dikonfirmasi",
-        `Bot STB sedang offline, konfirmasi LUNAS untuk kak ${customerName} otomatis dibuka di WhatsApp biasa & riwayat (#LT-${record.id}) dihapus.`
+        `Server Bot sedang offline, konfirmasi LUNAS untuk kak ${customerName} otomatis dibuka di WhatsApp biasa & riwayat (#LT-${record.id}) dihapus.`
       );
     } else {
       showModal(
@@ -1456,204 +1315,202 @@ ${upcomingEventText}`;
               className="space-y-6"
             >
               {/* Data Pelanggan */}
-        <section className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <User size={14} className="text-slate-400" />
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Pelanggan</h3>
-          </div>
-          <div className="space-y-3">
-            <button onClick={() => setShowCustomerList(true)} className="w-full py-3 bg-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center justify-center gap-2">
-              <User size={12} /> Pilih Pelanggan ({savedCustomers.length})
-            </button>
-            <input 
-              type="text" 
-              placeholder="NAMA PELANGGAN" 
-              value={customer.name}
-              onChange={e => setCustomer({ ...customer, name: e.target.value })}
-              className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs uppercase placeholder:text-slate-300"
-            />
-            <input 
-              type="tel" 
-              placeholder="NOMOR WHATSAPP (CONTOH: 0812...)" 
-              value={customer.phone}
-              onChange={e => setCustomer({ ...customer, phone: e.target.value })}
-              className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs placeholder:text-slate-300"
-            />
-            <input 
-              type="text" 
-              placeholder="ALAMAT" 
-              value={customer.address}
-              onChange={e => setCustomer({ ...customer, address: e.target.value })}
-              className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs uppercase placeholder:text-slate-300"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <select 
-              value={customer.status}
-              onChange={e => setCustomer({ ...customer, status: e.target.value as any })}
-              className="p-4 bg-slate-50 border-none rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer"
-            >
-              <option value="BELUM LUNAS">🔴 BELUM LUNAS</option>
-              <option value="LUNAS">🟢 LUNAS</option>
-            </select>
-            <select 
-              value={customer.delivery}
-              onChange={e => setCustomer({ ...customer, delivery: e.target.value as any })}
-              className="p-4 bg-slate-50 border-none rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer"
-            >
-              <option value="AMBIL SENDIRI">🏠 AMBIL SENDIRI</option>
-              <option value="ANTAR JEMPUT">🛵 ANTAR JEMPUT</option>
-            </select>
-          </div>
-        </section>
-
-        {/* Input Layanan */}
-        <section className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 size={14} className="text-slate-400" />
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pilih Layanan</h3>
-          </div>
-          <button 
-            onClick={() => setShowServiceModal(true)}
-            className="w-full p-4 bg-slate-900 text-white border-none rounded-2xl font-bold uppercase text-[11px] outline-none flex justify-between items-center transition-all btn-press"
-          >
-            <span className="flex-1 text-left truncate pr-4">
-              {selectedServiceIndex === -1
-                ? '-- PILIH LAYANAN --'
-                : flatServices[selectedServiceIndex].name}
-            </span>
-            <ChevronDown size={16} className="text-slate-400 shrink-0" />
-          </button>
-          <div className="flex gap-3">
-            <input 
-              type="number"
-              step="any" 
-              placeholder="JUMLAH" 
-              value={inputQty}
-              onChange={e => setInputQty(e.target.value)}
-              className="flex-1 p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs text-center placeholder:text-slate-300"
-            />
-            <div className="px-6 flex items-center justify-center bg-slate-100 rounded-2xl font-black text-[10px] text-slate-400 uppercase min-w-[80px]">
-              {selectedServiceIndex !== -1 ? flatServices[selectedServiceIndex].unit : 'UNIT'}
-            </div>
-          </div>
-          <button 
-            onClick={addItem}
-            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest btn-press shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
-          >
-            <Plus size={14} /> TAMBAH LAYANAN KE NOTA
-          </button>
-        </section>
-
-        {/* Preview Nota */}
-        <motion.div 
-          layout
-          className="nota-container overflow-hidden mx-auto max-w-sm bg-white"
-          id="notaBox"
-        >
-          <div className="p-10 text-center relative bg-[#fdfbf7]">
-            <div className="absolute top-6 right-8 font-black text-[10px] text-orange-800 bg-orange-100 px-3 py-1 rounded-full">
-              #LT-{notaId}
-            </div>
-            <img src={LOGO_URL} crossOrigin="anonymous" className="w-20 h-20 mx-auto mb-4 object-contain" alt="Logo" />
-            <h2 className="text-xl font-black text-slate-800 uppercase leading-none">Laundry Tante Tika</h2>
-            <div className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-2 space-y-0.5">
-              <p>Jl. Zamrud Depan Gg. Zamrud 2 RT 42</p>
-              <p>Bontang Selatan, Bontang</p>
-            </div>
-          </div>
-
-          <div className="px-8 pb-10 space-y-6 bg-white">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Pelanggan</p>
-                <p className="text-sm font-black text-slate-800 uppercase">{customer.name || '-'}</p>
-                <div className="flex items-center gap-1">
-                   <MapPin size={8} className="text-slate-400" />
-                   <p className="text-[8px] font-bold text-slate-400 uppercase italic">{customer.address || '-'}</p>
+              <section className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <User size={14} className="text-slate-400" />
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Pelanggan</h3>
                 </div>
-              </div>
-              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${
-                customer.status === 'LUNAS' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'
-              }`}>
-                {customer.status}
-              </div>
-            </div>
-
-            <div className="border-t border-dashed border-slate-200 pt-6 space-y-4">
-              <AnimatePresence initial={false}>
-                {cart.length === 0 ? (
-                  <motion.p 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-[8px] text-center text-slate-300 italic py-2"
+                <div className="space-y-3">
+                  <button onClick={() => setShowCustomerList(true)} className="w-full py-3 bg-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center justify-center gap-2">
+                    <User size={12} /> Pilih Pelanggan ({savedCustomers.length})
+                  </button>
+                  <input 
+                    type="text" 
+                    placeholder="NAMA PELANGGAN" 
+                    value={customer.name}
+                    onChange={e => setCustomer({ ...customer, name: e.target.value })}
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs uppercase placeholder:text-slate-300"
+                  />
+                  <input 
+                    type="tel" 
+                    placeholder="NOMOR WHATSAPP (CONTOH: 0812...)" 
+                    value={customer.phone}
+                    onChange={e => setCustomer({ ...customer, phone: e.target.value })}
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs placeholder:text-slate-300"
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="ALAMAT" 
+                    value={customer.address}
+                    onChange={e => setCustomer({ ...customer, address: e.target.value })}
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs uppercase placeholder:text-slate-300"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <select 
+                    value={customer.status}
+                    onChange={e => setCustomer({ ...customer, status: e.target.value as any })}
+                    className="p-4 bg-slate-50 border-none rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer"
                   >
-                    Belum ada layanan yang ditambahkan
-                  </motion.p>
-                ) : (
-                  cart.map((item, idx) => (
-                    <motion.div 
-                      key={idx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      className="flex justify-between items-center group"
-                    >
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => removeItem(idx)}
-                            className="no-print-img text-red-400 hover:text-red-600 transition-colors p-0.5"
-                            title="Hapus"
-                          >
-                            <Trash2 size={10} />
-                          </button>
-                          <p className="text-[10px] font-black text-slate-700 uppercase">{item.name}</p>
-                        </div>
-                        <p className="text-[8px] font-bold text-slate-400 ml-5">
-                          {item.qty} {item.unit.toUpperCase()} x Rp {item.price.toLocaleString()}
-                        </p>
+                    <option value="BELUM LUNAS">🔴 BELUM LUNAS</option>
+                    <option value="LUNAS">🟢 LUNAS</option>
+                  </select>
+                  <select 
+                    value={customer.delivery}
+                    onChange={e => setCustomer({ ...customer, delivery: e.target.value as any })}
+                    className="p-4 bg-slate-50 border-none rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer"
+                  >
+                    <option value="AMBIL SENDIRI">🏠 AMBIL SENDIRI</option>
+                    <option value="ANTAR JEMPUT">🛵 ANTAR JEMPUT</option>
+                  </select>
+                </div>
+              </section>
+
+              {/* Input Layanan */}
+              <section className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 size={14} className="text-slate-400" />
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pilih Layanan</h3>
+                </div>
+                <button 
+                  onClick={() => setShowServiceModal(true)}
+                  className="w-full p-4 bg-slate-900 text-white border-none rounded-2xl font-bold uppercase text-[11px] outline-none flex justify-between items-center transition-all btn-press"
+                >
+                  <span className="flex-1 text-left truncate pr-4">
+                    {selectedServiceIndex === -1
+                      ? '-- PILIH LAYANAN --'
+                      : flatServices[selectedServiceIndex].name}
+                  </span>
+                  <ChevronDown size={16} className="text-slate-400 shrink-0" />
+                </button>
+                <div className="flex gap-3">
+                  <input 
+                    type="number"
+                    step="any" 
+                    placeholder="JUMLAH" 
+                    value={inputQty}
+                    onChange={e => setInputQty(e.target.value)}
+                    className="flex-1 p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs text-center placeholder:text-slate-300"
+                  />
+                  <div className="px-6 flex items-center justify-center bg-slate-100 rounded-2xl font-black text-[10px] text-slate-400 uppercase min-w-[80px]">
+                    {selectedServiceIndex !== -1 ? flatServices[selectedServiceIndex].unit : 'UNIT'}
+                  </div>
+                </div>
+                <button 
+                  onClick={addItem}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest btn-press shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                >
+                  <Plus size={14} /> TAMBAH LAYANAN KE NOTA
+                </button>
+              </section>
+
+              {/* Preview Nota */}
+              <motion.div 
+                layout
+                className="nota-container overflow-hidden mx-auto max-w-sm bg-white rounded-3xl border border-slate-200 shadow-sm"
+                id="notaBox"
+              >
+                <div className="p-8 text-center relative bg-[#fdfbf7]">
+                  <div className="absolute top-4 right-6 font-black text-[10px] text-orange-800 bg-orange-100 px-3 py-1 rounded-full">
+                    #LT-{notaId}
+                  </div>
+                  <img src={LOGO_URL} className="w-16 h-16 mx-auto mb-3 object-contain" alt="Logo" />
+                  <h2 className="text-lg font-black text-slate-800 uppercase leading-none">Laundry Tante Tika</h2>
+                  <div className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-2 space-y-0.5">
+                    <p>Jl. Zamrud Depan Gg. Zamrud 2 RT 42</p>
+                    <p>Bontang Selatan, Bontang</p>
+                  </div>
+                </div>
+
+                <div className="px-6 pb-8 space-y-5 bg-white">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Pelanggan</p>
+                      <p className="text-xs font-black text-slate-800 uppercase">{customer.name || '-'}</p>
+                      <div className="flex items-center gap-1">
+                         <MapPin size={8} className="text-slate-400" />
+                         <p className="text-[8px] font-bold text-slate-400 uppercase italic">{customer.address || '-'}</p>
                       </div>
-                      <span className="text-[10px] font-black text-slate-800">
-                        Rp {item.subtotal.toLocaleString()}
-                      </span>
-                    </motion.div>
-                  ))
-                )}
-              </AnimatePresence>
-            </div>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${
+                      customer.status === 'LUNAS' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'
+                    }`}>
+                      {customer.status}
+                    </div>
+                  </div>
 
-            <div className="flex justify-between items-center px-1">
-              <p className="text-[8px] font-black text-slate-300 uppercase">Metode Pengambilan</p>
-              <p className="text-[9px] font-bold text-blue-600 uppercase font-mono">{customer.delivery}</p>
-            </div>
+                  <div className="border-t border-dashed border-slate-200 pt-5 space-y-3">
+                    <AnimatePresence initial={false}>
+                      {cart.length === 0 ? (
+                        <motion.p 
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="text-[9px] text-center text-slate-300 italic py-2"
+                        >
+                          Belum ada layanan yang ditambahkan
+                        </motion.p>
+                      ) : (
+                        cart.map((item, idx) => (
+                          <motion.div 
+                            key={idx}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="flex justify-between items-center group"
+                          >
+                            <div className="space-y-0.5 pr-2">
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => removeItem(idx)}
+                                  className="text-red-400 hover:text-red-600 transition-colors p-0.5"
+                                  title="Hapus"
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                                <p className="text-[10px] font-black text-slate-700 uppercase">{item.name}</p>
+                              </div>
+                              <p className="text-[8px] font-bold text-slate-400 ml-5 font-mono">
+                                {item.qty} {item.unit.toUpperCase()} x Rp {item.price.toLocaleString()}
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-black text-slate-800 shrink-0 font-mono">
+                              Rp {item.subtotal.toLocaleString()}
+                            </span>
+                          </motion.div>
+                        ))
+                      )}
+                    </AnimatePresence>
+                  </div>
 
-            <div className="bg-slate-900 rounded-[2rem] p-6 text-white flex justify-between items-center shadow-xl shadow-slate-200">
-              <div>
-                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Total Tagihan</p>
-                <p className="text-xl font-black">Rp {total.toLocaleString()}</p>
-              </div>
-              <div className="text-right">
-                <Clock size={10} className="ml-auto text-slate-500 mb-1" />
-                <p className="text-[7px] font-bold text-slate-500 uppercase leading-relaxed font-mono">
-                  {currentTime}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex flex-col gap-2 pt-2">
-              <p className="text-center text-[8px] font-black text-slate-300 tracking-[0.3em] uppercase">Pakaian Bersih Hati Senang</p>
-              <div className="bg-orange-50/80 border border-orange-200/70 py-2.5 px-3 rounded-xl text-center shadow-xs">
-                <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest">{upcomingEventText}</p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+                  <div className="flex justify-between items-center px-1">
+                    <p className="text-[8px] font-black text-slate-300 uppercase">Metode Pengambilan</p>
+                    <p className="text-[9px] font-bold text-blue-600 uppercase font-mono">{customer.delivery}</p>
+                  </div>
 
-
-      </motion.div>
-    ) : (
-      <motion.div
+                  <div className="bg-slate-900 rounded-[1.75rem] p-5 text-white flex justify-between items-center shadow-xl shadow-slate-200">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Tagihan</p>
+                      <p className="text-lg font-black font-mono">Rp {total.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <Clock size={10} className="ml-auto text-slate-400 mb-1" />
+                      <p className="text-[7px] font-bold text-slate-400 uppercase leading-relaxed font-mono">
+                        {currentTime}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <p className="text-center text-[8px] font-black text-slate-300 tracking-[0.2em] uppercase">Pakaian Bersih Hati Senang</p>
+                    <div className="bg-orange-50/80 border border-orange-200/70 py-2 px-3 rounded-xl text-center shadow-xs">
+                      <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest">{upcomingEventText}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
               key="history"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1721,11 +1578,10 @@ ${upcomingEventText}`;
                         </div>
                         <div className="text-right shrink-0">
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Total Tagihan</span>
-                          <p className="text-sm font-black text-slate-900">Rp {record.total.toLocaleString()}</p>
+                          <p className="text-sm font-black text-slate-900 font-mono">Rp {record.total.toLocaleString()}</p>
                         </div>
                       </div>
 
-                      {/* Rincian Layanan yang Terdaftar */}
                       {items.length > 0 && (
                         <div className="bg-slate-50/90 rounded-2xl p-3 border border-slate-100 text-[10px] space-y-1.5">
                           <div className="flex items-center justify-between text-[8px] font-black text-slate-400 uppercase tracking-wider">
@@ -1735,14 +1591,13 @@ ${upcomingEventText}`;
                             {items.map((it: any, itIdx: number) => (
                               <div key={itIdx} className="flex justify-between items-center text-slate-600 font-medium">
                                 <span className="truncate pr-2">• {it.name} ({it.qty} {it.unit})</span>
-                                <span className="font-bold text-slate-800 shrink-0">Rp {(it.price * it.qty).toLocaleString()}</span>
+                                <span className="font-bold text-slate-800 shrink-0 font-mono">Rp {(it.price * it.qty).toLocaleString()}</span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      {/* Tombol Aksi: Konfirmasi / Lunas */}
                       <div className="pt-1 flex gap-2 items-center">
                         <button 
                           onClick={() => handleConfirmPayment(record, idx)}
@@ -1825,95 +1680,6 @@ ${upcomingEventText}`;
           </button>
         </div>
       </footer>
-
-      {/* Offscreen Receipt Card for image generator (completely offscreen) */}
-      <div 
-        aria-hidden="true"
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: '-9999px',
-          width: '450px',
-          pointerEvents: 'none'
-        }}
-      >
-        <div ref={receiptCardRef} style={{ width: '450px', backgroundColor: '#ffffff' }}>
-          <ReceiptCard
-            notaId={notaId}
-            customer={customer}
-            cart={cart}
-            total={total}
-            time={currentTime}
-            eventText={upcomingEventText}
-          />
-        </div>
-      </div>
-
-      {/* Modal Pratinjau Nota Gambar */}
-      {showImagePreview && previewImage && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[250] p-4 backdrop-blur-md">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-5 max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <ImageIcon size={18} className="text-cyan-600" />
-                <h3 className="font-black text-xs uppercase tracking-wider text-slate-800">
-                  Pratinjau Nota Gambar
-                </h3>
-              </div>
-              <button 
-                onClick={() => setShowImagePreview(false)}
-                className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-500 transition-colors"
-              >
-                <X size={15} />
-              </button>
-            </div>
-
-            {/* Preview image scrollable */}
-            <div className="overflow-y-auto py-3 space-y-3">
-              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50 flex justify-center">
-                <img 
-                  src={previewImage} 
-                  alt="Nota Laundry Tante Tika" 
-                  className="w-full h-auto object-contain"
-                />
-              </div>
-
-              {/* Caption preview info box */}
-              <div className="bg-cyan-50 border border-cyan-100 rounded-2xl p-3 text-[11px] space-y-1">
-                <div className="flex items-center justify-between text-[9px] font-black uppercase text-cyan-700 tracking-wider">
-                  <span>Caption Otomatis Bot ({getWAGreeting()})</span>
-                  <span className="px-2 py-0.5 rounded-full bg-cyan-200/70 text-cyan-900 font-bold">WIB</span>
-                </div>
-                <p className="text-slate-700 font-medium italic">
-                  "{getWACaption(customer.delivery)}"
-                </p>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="pt-2 flex gap-2">
-              <a
-                href={previewImage}
-                download={`Nota-LT-${notaId}.jpg`}
-                className="flex-1 py-3 px-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
-              >
-                <Download size={14} />
-                <span>Simpan</span>
-              </a>
-              <button
-                onClick={() => {
-                  setShowImagePreview(false);
-                  handleWA();
-                }}
-                className="flex-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm shadow-emerald-600/30 transition-all active:scale-[0.98]"
-              >
-                <Send size={14} />
-                <span>Kirim via Bot STB</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal Customer List */}
       {showCustomerList && (
@@ -2130,8 +1896,6 @@ ${upcomingEventText}`;
           </motion.div>
         )}
 
-
-
         {/* Modal Pengaturan Bot WA WiFi STB */}
         {showBotModal && (
           <motion.div
@@ -2198,7 +1962,6 @@ ${upcomingEventText}`;
                 </button>
               </div>
 
-              {/* Status Bot Terhubung */}
               {botStatus.connected ? (
                 <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
@@ -2234,7 +1997,6 @@ ${upcomingEventText}`;
                 )
               )}
 
-              {/* Input URL Server Bot */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -2269,11 +2031,10 @@ ${upcomingEventText}`;
                   </button>
                 </div>
                 <p className="text-[9px] text-slate-400">
-                  Default Cloud Server sudah terpasang otomatis. Tidak perlu input ulang saat saklar aktif.
+                  Default Server Bot (https://e4-store.my.id) sudah terpasang otomatis. Endpoint: /api/laundry/kirim-nota.
                 </p>
               </div>
 
-              {/* Panel Tautkan WhatsApp Khusus Pairing Code 8 Digit (Hanya jika belum terhubung) */}
               {!botStatus.connected && (
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">
@@ -2327,15 +2088,11 @@ ${upcomingEventText}`;
                       >
                         Salin Kode 8 Digit
                       </button>
-                      <p className="text-[10px] text-slate-500 leading-relaxed">
-                        Buka WhatsApp ➔ <b>Perangkat Tertaut</b> ➔ <b>Tautkan Perangkat</b> ➔ pilih <b>"Tautkan dengan nomor telepon saja"</b> di bagian bawah layar.
-                      </p>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Tombol Ganti Nomor WA jika sudah terhubung */}
               {botStatus.connected && (
                 <div className="flex justify-end">
                   <button
@@ -2348,7 +2105,6 @@ ${upcomingEventText}`;
                 </div>
               )}
 
-              {/* Tes Kirim WA */}
               <div className="p-4 bg-slate-50 rounded-2xl space-y-2.5 border border-slate-100">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tes Kirim Pesan via Bot</p>
                 <div className="flex gap-2">
