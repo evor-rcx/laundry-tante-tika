@@ -324,7 +324,8 @@ app.get('/status', (req, res) => {
     success: true,
     connected: isConnected,
     status: isConnected ? 'connected' : 'pairing_ready',
-    botNumber: connectedNumber,
+    botNumber: connectedNumber || '',
+    name: 'Laundry Tante Tika Bot',
     pairingCode: latestPairingCode,
     ip: ips[0],
     port: PORT

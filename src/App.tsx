@@ -52,6 +52,8 @@ interface WaBotConfig {
   ip: string;
 }
 
+const DEFAULT_BOT_URL = 'https://ais-pre-ekp4iw4jzmx6xm4x6djji6-671441126012.asia-southeast1.run.app';
+
 const SERVICES_CATALOG = [
   { group: 'KILOAN', items: [
     { name: 'SETRIKA (KILOAN)', price: 5000, unit: 'kg' },
@@ -345,7 +347,12 @@ export default function App() {
         if (idbCustomer) setCustomer(idbCustomer);
 
         const idbBotConfig = await get('tt_wa_bot_config');
-        if (idbBotConfig) setWaBotConfig(idbBotConfig);
+        if (idbBotConfig) {
+          setWaBotConfig(prev => ({
+            enabled: idbBotConfig.enabled !== undefined ? idbBotConfig.enabled : prev.enabled,
+            ip: (idbBotConfig.ip && idbBotConfig.ip.trim()) ? idbBotConfig.ip : (prev.ip || DEFAULT_BOT_URL)
+          }));
+        }
       } catch (err) {
         console.error("Failed to load from IDB", err);
       }
@@ -357,12 +364,16 @@ export default function App() {
     const saved = localStorage.getItem('tt_wa_bot_config');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          enabled: parsed.enabled !== undefined ? parsed.enabled : true,
+          ip: (parsed.ip && parsed.ip.trim()) ? parsed.ip : DEFAULT_BOT_URL
+        };
       } catch (e) {
         // ignore parse error
       }
     }
-    return { enabled: false, ip: '' };
+    return { enabled: true, ip: DEFAULT_BOT_URL };
   });
   const [showBotModal, setShowBotModal] = useState(false);
   const [botStatus, setBotStatus] = useState<{
@@ -370,9 +381,10 @@ export default function App() {
     connected: boolean;
     message: string;
     botNumber?: string | null;
+    botName?: string | null;
     qrImage?: string | null;
     pairingCode?: string | null;
-  }>({ checked: false, connected: false, message: 'Belum dicek', qrImage: null, pairingCode: null });
+  }>({ checked: false, connected: false, message: 'Menghubungkan ke Server Bot...', qrImage: null, pairingCode: null });
   const [isCheckingBot, setIsCheckingBot] = useState(false);
   const [isSendingWA, setIsSendingWA] = useState(false);
   const [testPhoneInput, setTestPhoneInput] = useState('');
@@ -843,22 +855,27 @@ export default function App() {
     }
   };
 
-  const getBotBaseUrl = (rawIp: string) => {
-    let url = rawIp.trim().replace(/\/+$/, '');
-    if (!url) return '';
+  const getBotBaseUrl = (rawIp?: string) => {
+    let url = (rawIp || '').trim();
+    if (!url) {
+      url = DEFAULT_BOT_URL;
+    }
+    url = url.replace(/\/+$/, '');
     if (!/^https?:\/\//i.test(url)) {
-      url = 'http://' + url;
+      if (url.includes('.run.app') || url.includes('cloudrun') || url.includes('.app')) {
+        url = 'https://' + url;
+      } else {
+        url = 'http://' + url;
+      }
     }
     try {
       const parsed = new URL(url);
-      if (!parsed.port) {
+      const isRawIpOrLocalhost = /^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname) || parsed.hostname === 'localhost';
+      if (isRawIpOrLocalhost && !parsed.port) {
         parsed.port = '3005';
       }
       return parsed.origin;
     } catch {
-      if (!/:\d+$/.test(url)) {
-        url += ':3005';
-      }
       return url;
     }
   };
@@ -870,7 +887,7 @@ export default function App() {
         setBotStatus({
           checked: true,
           connected: false,
-          message: 'Masukkan alamat IP STB terlebih dahulu (contoh: 192.168.1.15:3005).',
+          message: 'Alamat bot tidak tersedia.',
           qrImage: null,
           pairingCode: null
         });
@@ -881,21 +898,28 @@ export default function App() {
     if (!silent) setIsCheckingBot(true);
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3500);
+      const timer = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(`${baseUrl}/status`, {
         method: 'GET',
+        headers: { 'Accept': 'application/json' },
         signal: controller.signal
       });
       clearTimeout(timer);
-      const data = await res.json();
-      if (res.ok && data.connected) {
+      const data = await res.json().catch(() => ({}));
+
+      const isConnected = !!(data.connected === true || data.status === 'connected' || data.connected === 'true');
+      const botNum = data.botNumber || data.phone || data.number || '';
+      const botName = data.name || data.pushname || '';
+
+      if (res.ok && isConnected) {
         setBotStatus({
           checked: true,
           connected: true,
-          botNumber: data.botNumber,
+          botNumber: botNum,
+          botName: botName,
           qrImage: null,
           pairingCode: null,
-          message: `Terhubung ke Bot STB (+${data.botNumber || 'Aktif'})`
+          message: `Bot Aktif & Siap (+${botNum || 'Terhubung'}${botName ? ` • ${botName}` : ''})`
         });
         return true;
       } else {
@@ -905,9 +929,9 @@ export default function App() {
           botNumber: null,
           qrImage: data.qrImage || null,
           pairingCode: data.pairingCode || prev.pairingCode || null,
-          message: data.qrImage
-            ? 'Server STB Aktif! Silakan Scan QR di bawah atau gunakan Kode 8 Digit.'
-            : 'Server STB Aktif, sedang menyiapkan QR Code WhatsApp...'
+          message: data.message || (data.qrImage
+            ? 'Server Bot Aktif! Silakan Scan QR di bawah atau gunakan Kode 8 Digit.'
+            : 'Server Bot sedang standby/menyiapkan koneksi WhatsApp...')
         }));
         return false;
       }
@@ -918,7 +942,7 @@ export default function App() {
           connected: false,
           qrImage: null,
           pairingCode: null,
-          message: 'Tidak dapat menghubungi STB. Pastikan HP satu WiFi dengan STB & pm2 laundry-tante-tika sudah jalan.'
+          message: 'Server Bot offline. Transaksi kasir otomatis beralih ke WhatsApp biasa (wa.me).'
         });
       }
       return false;
@@ -928,10 +952,17 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!showBotModal || !waBotConfig.ip.trim()) return;
+    if (waBotConfig.enabled) {
+      checkBotConnection(waBotConfig.ip || DEFAULT_BOT_URL, true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showBotModal) return;
+    checkBotConnection(waBotConfig.ip || DEFAULT_BOT_URL, true);
     const interval = setInterval(() => {
-      checkBotConnection(waBotConfig.ip, true);
-    }, 3500);
+      checkBotConnection(waBotConfig.ip || DEFAULT_BOT_URL, true);
+    }, 4000);
     return () => clearInterval(interval);
   }, [showBotModal, waBotConfig.ip]);
 
@@ -1088,22 +1119,39 @@ export default function App() {
   ): Promise<{ sentViaBot: boolean; usedFallback: boolean; sentAsImage: boolean }> => {
     const baseUrl = getBotBaseUrl(waBotConfig.ip);
 
-    // Jika Mode Bot ON, IP STB terisi, dan Nomor WA pelanggan ada -> Coba kirim lewat Bot WiFi STB
+    // Jika Mode Bot ON, URL server bot ada, dan Nomor WA pelanggan ada -> Kirim otomatis via Bot Server
     if (waBotConfig.enabled && baseUrl && cleanPhone) {
       setIsSendingWA(true);
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 20000);
+
+        const payload: {
+          phone: string;
+          message: string;
+          imageBase64?: string;
+          image?: string;
+          caption?: string;
+        } = {
+          phone: cleanPhone,
+          message: textMessage
+        };
+
+        if (imageBase64) {
+          payload.imageBase64 = imageBase64;
+          payload.image = imageBase64;
+        }
+        if (caption) {
+          payload.caption = caption;
+        }
+
         const res = await fetch(`${baseUrl}/send`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            phone: cleanPhone, 
-            message: textMessage,
-            image: imageBase64 || undefined,
-            imageBase64: imageBase64 || undefined,
-            caption: caption || undefined
-          }),
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload),
           signal: controller.signal
         });
         clearTimeout(timer);
@@ -1113,17 +1161,17 @@ export default function App() {
           return { sentViaBot: true, usedFallback: false, sentAsImage: !!data.hasImage };
         }
       } catch (err) {
-        console.warn('Bot STB tidak terjangkau, otomatis beralih ke WA biasa:', err);
+        console.warn('Server Bot WhatsApp tidak terjangkau, otomatis beralih ke WhatsApp biasa (wa.me):', err);
       }
       setIsSendingWA(false);
 
-      // Fallback otomatis ke aplikasi WhatsApp biasa jika Bot STB sedang mati / di luar WiFi
+      // Fallback otomatis ke aplikasi WhatsApp biasa jika Server Bot offline / timeout
       const fallbackText = caption ? `${caption}\n\n${textMessage}` : textMessage;
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(fallbackText)}`, '_blank');
       return { sentViaBot: false, usedFallback: true, sentAsImage: false };
     }
 
-    // Mode manual (Bot OFF atau nomor tidak diisi)
+    // Mode manual (Bot OFF atau nomor tidak diisi) -> Fallback ke WhatsApp biasa
     const manualText = caption ? `${caption}\n\n${textMessage}` : textMessage;
     if (cleanPhone) {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(manualText)}`, '_blank');
@@ -1145,38 +1193,43 @@ export default function App() {
 
     const baseUrl = getBotBaseUrl(waBotConfig.ip);
     if (!baseUrl) {
-      showModal('IP Kosong', 'Masukkan IP STB WiFi rumah terlebih dahulu (contoh: 192.168.1.15:3005).');
+      showModal('Server Kosong', 'Alamat server bot belum terisi.');
       return;
     }
 
     setIsCheckingBot(true);
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 4000);
+      const timer = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(`${baseUrl}/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           phone: cleanPhone,
-          message: `*TES BOT WIFI LAUNDRY TANTE TIKA* ✅\n\nKoneksi antara Aplikasi HP dan Bot STB Armbian (${baseUrl}) telah berhasil terhubung melalui WiFi rumah!`
+          message: `*TES BOT WHATSAPP LAUNDRY TANTE TIKA* ✅\n\nKoneksi antara Aplikasi Kasir dan Server Bot WhatsApp (${baseUrl}) telah terhubung & aktif!`,
+          caption: 'Tes Bot WhatsApp'
         }),
         signal: controller.signal
       });
       clearTimeout(timer);
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
-        setBotStatus({
+        setBotStatus(prev => ({
+          ...prev,
           checked: true,
           connected: true,
-          botNumber: data.botNumber,
+          botNumber: data.botNumber || prev.botNumber,
           message: `Tes kirim berhasil ke +${cleanPhone}`
-        });
-        showModal('Berhasil Terkirim!', `Pesan tes telah dikirim otomatis oleh Bot STB ke nomor +${cleanPhone} tanpa membuka aplikasi WA.`);
+        }));
+        showModal('Berhasil Terkirim!', `Pesan tes berhasil dikirim otomatis oleh Server Bot WhatsApp ke nomor +${cleanPhone}.`);
       } else {
-        showModal('Gagal Kirim Bot', data.error || 'Pastikan QR WA sudah di-scan di terminal STB Armbian.');
+        showModal('Gagal Kirim Bot', data.error || 'Server Bot belum terhubung ke WhatsApp. Cek status bot.');
       }
     } catch {
-      showModal('Gagal Terhubung', 'Tidak bisa menghubungi IP STB. Pastikan HP terhubung ke WiFi rumah dan bot-stb aktif di PM2.');
+      showModal('Gagal Terhubung', `Tidak dapat menghubungi server bot di ${baseUrl}. Transaksi kasir tetap aman menggunakan fallback WA.`);
     } finally {
       setIsCheckingBot(false);
     }
@@ -2099,31 +2152,45 @@ ${upcomingEventText}`;
                     <Wifi size={20} />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-900">Bot WA WiFi (STB Armbian)</h3>
-                    <p className="text-[10px] text-slate-400 font-medium">Koneksi langsung via WiFi Rumah tanpa tunnel</p>
+                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-900">Server Bot WhatsApp</h3>
+                    <p className="text-[10px] text-slate-400 font-medium">Kirim nota otomatis via Bot Server Cloud / STB</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowBotModal(false)}
-                  className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"
+                  className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
                 >
                   <X size={14} />
                 </button>
               </div>
 
-              {/* Saklar ON/OFF */}
+              {/* Saklar ON/OFF Mode Bot */}
               <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between border border-slate-100">
-                <div>
-                  <p className="text-xs font-black uppercase text-slate-800">Saklar Mode Bot WiFi</p>
-                  <p className="text-[10px] text-slate-400">
+                <div className="pr-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-black uppercase text-slate-800">Saklar Mode Bot WiFi</p>
+                    {waBotConfig.enabled && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700">
+                        Aktif
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
                     {waBotConfig.enabled
-                      ? 'AKTIF: Kirim otomatis via STB (Fallback ke WA biasa jika offline)'
-                      : 'NONAKTIF: Selalu buka aplikasi WhatsApp manual'}
+                      ? 'AKTIF: Nota dikirim otomatis via Bot (Fallback ke WA biasa jika offline)'
+                      : 'NONAKTIF: Selalu buka aplikasi WhatsApp manual (wa.me)'}
                   </p>
                 </div>
                 <button
-                  onClick={() => setWaBotConfig(prev => ({ ...prev, enabled: !prev.enabled }))}
-                  className={`w-14 h-8 rounded-full p-1 transition-all flex items-center ${
+                  onClick={() => {
+                    const nextVal = !waBotConfig.enabled;
+                    const targetIp = (waBotConfig.ip && waBotConfig.ip.trim()) ? waBotConfig.ip : DEFAULT_BOT_URL;
+                    setWaBotConfig({ enabled: nextVal, ip: targetIp });
+                    if (nextVal) {
+                      checkBotConnection(targetIp, false);
+                    }
+                  }}
+                  className={`w-14 h-8 rounded-full p-1 transition-all flex items-center shrink-0 ${
                     waBotConfig.enabled ? 'bg-emerald-500 justify-end' : 'bg-slate-300 justify-start'
                   }`}
                 >
@@ -2131,15 +2198,64 @@ ${upcomingEventText}`;
                 </button>
               </div>
 
-              {/* Input IP STB */}
+              {/* Status Bot Terhubung */}
+              {botStatus.connected ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
+                        <CheckCircle2 size={18} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase text-emerald-950">Bot WhatsApp Terhubung</p>
+                        <p className="text-[11px] text-emerald-800 font-bold">
+                          {botStatus.botNumber ? `+${botStatus.botNumber}` : 'Server Aktif'} {botStatus.botName ? `(${botStatus.botName})` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleResetBotSession}
+                      disabled={isCheckingBot}
+                      className="px-2.5 py-1 bg-white text-rose-600 border border-rose-200 rounded-lg text-[9px] font-black uppercase tracking-wider"
+                    >
+                      Reset Sesi
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-emerald-700 font-medium">
+                    ✅ Aplikasi kasir langsung mengenali bot. Nota transaksi akan dikirim otomatis ke pelanggan.
+                  </p>
+                </div>
+              ) : (
+                botStatus.checked && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[10px] text-amber-800 font-semibold flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                    <span>{botStatus.message}</span>
+                  </div>
+                )
+              )}
+
+              {/* Input URL Server Bot */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Alamat IP STB Armbian (Port 3005)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Alamat Server Bot WhatsApp
+                  </label>
+                  {waBotConfig.ip !== DEFAULT_BOT_URL && (
+                    <button
+                      onClick={() => {
+                        setWaBotConfig(prev => ({ ...prev, ip: DEFAULT_BOT_URL }));
+                        checkBotConnection(DEFAULT_BOT_URL, false);
+                      }}
+                      className="text-[9px] font-bold text-blue-600 hover:text-blue-700 underline"
+                    >
+                      Gunakan Server Default
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Contoh: 192.168.1.15:3005"
+                    placeholder={DEFAULT_BOT_URL}
                     value={waBotConfig.ip}
                     onChange={e => setWaBotConfig(prev => ({ ...prev, ip: e.target.value }))}
                     className="flex-1 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-xs text-slate-800 placeholder:text-slate-300"
@@ -2149,20 +2265,15 @@ ${upcomingEventText}`;
                     disabled={isCheckingBot}
                     className="px-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-wider btn-press disabled:opacity-50 shrink-0"
                   >
-                    {isCheckingBot ? 'Cek...' : 'Cek Koneksi'}
+                    {isCheckingBot ? 'Cek...' : 'Cek Status'}
                   </button>
                 </div>
-                {botStatus.checked && (
-                  <div className={`p-3 rounded-xl text-[11px] font-bold flex items-center gap-2 ${
-                    botStatus.connected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                  }`}>
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${botStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                    <span>{botStatus.message}</span>
-                  </div>
-                )}
+                <p className="text-[9px] text-slate-400">
+                  Default Cloud Server sudah terpasang otomatis. Tidak perlu input ulang saat saklar aktif.
+                </p>
               </div>
 
-              {/* Panel Tautkan WhatsApp Khusus Pairing Code 8 Digit (1 HP) */}
+              {/* Panel Tautkan WhatsApp Khusus Pairing Code 8 Digit (Hanya jika belum terhubung) */}
               {!botStatus.connected && (
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">
@@ -2179,7 +2290,7 @@ ${upcomingEventText}`;
                   </div>
 
                   <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                    Khusus <b>1 HP (Tanpa Scan Kamera)</b>. Isi IP STB di atas, masukkan nomor WA Laundry Anda di bawah, lalu klik <b>Minta Kode Pairing</b>:
+                    Jika server membutuhkan penautan nomor baru, masukkan nomor WhatsApp bot lalu klik <b>Minta Kode Pairing</b>:
                   </p>
 
                   <div className="flex gap-2">
