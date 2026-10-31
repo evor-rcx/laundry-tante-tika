@@ -18,7 +18,13 @@ import {
   ShoppingBag,
   MessageCircle,
   Wifi,
-  Save
+  Save,
+  Truck,
+  FileText,
+  Wallet,
+  Coins,
+  CreditCard,
+  Banknote
 } from 'lucide-react';
 
 // Types
@@ -36,6 +42,7 @@ interface CustomerInfo {
   address: string;
   status: 'BELUM LUNAS' | 'LUNAS';
   delivery: 'AMBIL SENDIRI' | 'ANTAR JEMPUT';
+  balance?: number;
 }
 
 interface WaBotConfig {
@@ -96,6 +103,50 @@ const SERVICES_CATALOG = [
   ]},
 ];
 
+// Sapaan waktu 5-kategori sesuai instruksi user:
+// 05:00 - 10:59: pagi
+// 11:00 - 14:59: siang
+// 15:00 - 17:59: sore
+// 18:00 - 18:59: petang
+// 19:00 - 04:59: malam
+export const getGreetingTimeWord = (date: Date = new Date()): 'pagi' | 'siang' | 'sore' | 'petang' | 'malam' => {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 11) return 'pagi';
+  if (hour >= 11 && hour < 15) return 'siang';
+  if (hour >= 15 && hour < 18) return 'sore';
+  if (hour >= 18 && hour < 19) return 'petang';
+  return 'malam';
+};
+
+export const getPaymentGreeting = (customerName: string, date: Date = new Date()): string => {
+  const timeWord = getGreetingTimeWord(date);
+  const cleanName = customerName?.trim() ? customerName.trim() : 'Customer';
+  return `Selamat ${timeWord}, Kak ${cleanName}.`;
+};
+
+export const getPaymentConfirmationMessage = (
+  customerName: string,
+  totalAmount: number,
+  date: Date = new Date()
+): string => {
+  const greeting = getPaymentGreeting(customerName, date);
+  const dateStr = date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  const hourStr = date.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }).replace('.', ':');
+  const jumlahStr = totalAmount.toLocaleString('id-ID');
+
+  return `${greeting}
+Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebesar Rp ${jumlahStr} sudah kami terima pada tanggal ${dateStr} pukul ${hourStr}. Dengan ini status pembayaran LUNAS.
+
+Terima kasih banyak atas kepercayaannya mencuci di Laundry Tante Tika! 🙏✨`;
+};
+
 export const getWAGreeting = (date: Date = new Date()): string => {
   const hour = date.getHours();
   if (hour >= 5 && hour < 11) return 'Selamat pagi';
@@ -123,6 +174,7 @@ const LOGO_URL = LOGO_DATA;
 
 export default function App() {
   const [notaId, setNotaId] = useState(() => Math.floor(1000 + Math.random() * 9000));
+  const [loadedArrivalDate, setLoadedArrivalDate] = useState<string | null>(null);
   const [customer, setCustomer] = useState<CustomerInfo>(() => {
     const saved = localStorage.getItem('tt_laundry_customer');
     return saved ? JSON.parse(saved) : {
@@ -255,16 +307,68 @@ export default function App() {
     set('tt_laundry_history', history).catch(console.error);
   }, [history]);
 
-  const saveCustomer = (c: CustomerInfo) => {
-    if (!c.name.trim()) return;
-    setSavedCustomers((prev: any[]) => {
-      const exists = prev.findIndex((x: any) => x.name.toLowerCase() === c.name.toLowerCase());
-      if (exists >= 0) { const updated = [...prev]; updated[exists] = c; return updated; }
-      return [c, ...prev].slice(0, 30);
+  const getCustomerBalance = (customerName?: string, customerPhone?: string): number => {
+    if (!customerName && !customerPhone) return 0;
+    const cleanPhone = (customerPhone || '').replace(/[^0-9]/g, '');
+    const found = savedCustomers.find((c: any) => {
+      const cPhone = (c.phone || '').replace(/[^0-9]/g, '');
+      const matchName = customerName && c.name && c.name.trim().toLowerCase() === customerName.trim().toLowerCase();
+      const matchPhone = cleanPhone && cPhone && cleanPhone === cPhone;
+      return matchName || matchPhone;
+    });
+    return (found && typeof found.balance === 'number') ? Math.max(0, found.balance) : 0;
+  };
+
+  const updateCustomerBalance = (customerName: string, customerPhone: string | undefined, newBalance: number) => {
+    const safeBalance = Math.max(0, Math.round(newBalance));
+    setSavedCustomers(prev => {
+      const cleanPhone = (customerPhone || '').replace(/[^0-9]/g, '');
+      let found = false;
+      const next = prev.map(c => {
+        const cPhone = (c.phone || '').replace(/[^0-9]/g, '');
+        const matchName = customerName && c.name && c.name.trim().toLowerCase() === customerName.trim().toLowerCase();
+        const matchPhone = cleanPhone && cPhone && cleanPhone === cPhone;
+        if (matchName || matchPhone) {
+          found = true;
+          return { ...c, balance: safeBalance };
+        }
+        return c;
+      });
+      if (!found && customerName?.trim()) {
+        next.unshift({
+          name: customerName.trim(),
+          phone: customerPhone || '',
+          address: '',
+          status: 'BELUM LUNAS',
+          delivery: 'AMBIL SENDIRI',
+          balance: safeBalance
+        });
+      }
+      return next;
     });
   };
 
-  const saveToHistory = () => {
+  const saveCustomer = (c: CustomerInfo) => {
+    if (!c.name.trim()) return;
+    setSavedCustomers((prev: any[]) => {
+      const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '');
+      const exists = prev.findIndex((x: any) => {
+        const xPhone = (x.phone || '').replace(/[^0-9]/g, '');
+        const matchName = x.name && x.name.trim().toLowerCase() === c.name.trim().toLowerCase();
+        const matchPhone = cleanPhone && xPhone && cleanPhone === xPhone;
+        return matchName || matchPhone;
+      });
+      if (exists >= 0) { 
+        const updated = [...prev]; 
+        const existingBal = updated[exists].balance ?? 0;
+        updated[exists] = { ...updated[exists], ...c, balance: existingBal }; 
+        return updated; 
+      }
+      return [{ ...c, balance: 0 }, ...prev].slice(0, 50);
+    });
+  };
+
+  const saveToHistory = (options?: { tanggalAntar?: string; tanggalBayar?: string; status?: 'BELUM LUNAS' | 'LUNAS' }) => {
     saveCustomer(customer);
     const now = new Date();
     const timeStr = now.toLocaleString('id-ID', { 
@@ -275,12 +379,25 @@ export default function App() {
       minute: '2-digit'
     }).replace('.', ':');
 
+    // Cari riwayat lama jika nota ini sudah pernah dicatat sebelumnya
+    const existingRecord = history.find((r: any) => String(r.id) === String(notaId));
+    
+    // ATURAN PENTING USER: JANGAN UBAH TANGGAL DATANG SAAT DI-EDIT DARI "BUKA"
+    // Tanggal datang adalah tanggal awal saat pertama kali nota masuk ke riwayat
+    const tanggalDatang = existingRecord?.tanggalDatang || existingRecord?.time || loadedArrivalDate || timeStr;
+    const tanggalAntar = options?.tanggalAntar !== undefined ? options.tanggalAntar : (existingRecord?.tanggalAntar || null);
+    const tanggalBayar = options?.tanggalBayar !== undefined ? options.tanggalBayar : (existingRecord?.tanggalBayar || null);
+    const finalStatus = options?.status || customer.status || 'BELUM LUNAS';
+
     const record = {
       id: notaId,
-      customer,
+      customer: { ...customer, status: finalStatus },
       cart,
       total,
-      time: timeStr
+      time: tanggalDatang, // Simpan tanggal datang asli di field time agar aman & kompatibel
+      tanggalDatang,       // Tanggal Datang (TIDAK BERUBAH SAAT DI-EDIT)
+      tanggalAntar,        // Tanggal Pengantaran / Kirim WA
+      tanggalBayar         // Tanggal Bayar Lunas
     };
     
     setHistory(prev => {
@@ -301,6 +418,24 @@ export default function App() {
     message: '',
     visible: false,
     onConfirm: () => {}
+  });
+
+  const [paymentModal, setPaymentModal] = useState<{
+    visible: boolean;
+    record: any;
+    recordIndex: number;
+    paymentMethod: 'CASH' | 'TRANSFER';
+    useBalance: boolean;
+    inputAmount: string;
+    excessAction: 'CHANGE' | 'SAVE_BALANCE';
+  }>({
+    visible: false,
+    record: null,
+    recordIndex: -1,
+    paymentMethod: 'CASH',
+    useBalance: true,
+    inputAmount: '',
+    excessAction: 'CHANGE'
   });
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const [isOnline, setIsOnline] = useState(true);
@@ -497,6 +632,7 @@ export default function App() {
       delivery: 'AMBIL SENDIRI'
     });
     setNotaId(Math.floor(1000 + Math.random() * 9000));
+    setLoadedArrivalDate(null);
   };
 
   const handlePrint = async () => {
@@ -594,7 +730,7 @@ export default function App() {
         targetChar = '00002af1-0000-1000-8000-00805f9b34fb';
       }
 
-      let printTime = currentTime.replace(' pukul ', ' ').substring(0, 32);
+      let printTime = (loadedArrivalDate || currentTime).replace(' pukul ', ' ').substring(0, 32);
       
       let text = "\x1B\x40\x1B\x61\x01\x1B\x45\x01LAUNDRY TANTE TIKA\n\x1B\x45\x00";
       text += "Jl. Zamrud Depan Gg. Zamrud 2\nRT 42, Bontang Selatan\n";
@@ -1089,13 +1225,14 @@ export default function App() {
     });
 
     const caption = getWACaption(customer.delivery);
+    const orderDateDisplay = (loadedArrivalDate || currentTime).replace(' pukul ', ' ');
 
     const text = `*LAUNDRY TANTE TIKA*
 Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan
 WA: 0851-6994-9219
 
 _Nota #LT-${notaId}_
-🗓️ *Waktu:* ${currentTime.replace(' pukul ', ' ')}
+🗓️ *Waktu Masuk:* ${orderDateDisplay}
 
 👤 *Nama:* ${customer.name.toUpperCase() || '-'}
 📍 *Alamat:* ${customer.address.toUpperCase() || '-'}
@@ -1133,7 +1270,17 @@ _"PAKAIAN BERSIH, HATI SENANG"_
 
     const result = await sendViaBotOrFallback(cleanPhone, text, caption, orderPayload);
 
-    saveToHistory();
+    // Tanggal Kirim WA / Pengantaran dicatat saat kirim nota ke WhatsApp
+    const now = new Date();
+    const tanggalAntar = now.toLocaleString('id-ID', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).replace('.', ':');
+
+    saveToHistory({ tanggalAntar });
     resetForm();
 
     if (result.sentViaBot) {
@@ -1145,79 +1292,225 @@ _"PAKAIAN BERSIH, HATI SENANG"_
     }
   };
 
-  const handleConfirmPayment = async (record: any, idx: number) => {
+  const openPaymentModal = (record: any, idx: number) => {
+    const existingBalance = getCustomerBalance(record.customer?.name, record.customer?.phone);
+    const initialUseBalance = existingBalance > 0;
+    const initialRemaining = initialUseBalance ? Math.max(0, record.total - existingBalance) : record.total;
+
+    setPaymentModal({
+      visible: true,
+      record,
+      recordIndex: idx,
+      paymentMethod: record.metodeBayar || 'CASH',
+      useBalance: initialUseBalance,
+      inputAmount: initialRemaining === 0 ? '0' : String(initialRemaining),
+      excessAction: 'CHANGE'
+    });
+  };
+
+  const handleExecutePayment = async () => {
+    const record = paymentModal.record;
+    if (!record) return;
+    const idx = paymentModal.recordIndex;
     const customerName = record.customer?.name?.trim() ? record.customer.name.trim() : 'Pelanggan';
-    const items = record.cart || record.items || [];
-    
-    let detailLayanan = "";
-    if (items.length > 0) {
-      detailLayanan = items.map((item: any) => {
-        return `${item.name}\n${item.qty} ${item.unit.toUpperCase()} x Rp ${item.price.toLocaleString()} = Rp ${(item.price * item.qty).toLocaleString()}`;
-      }).join("\n");
-    } else {
-      detailLayanan = `Tagihan: Rp ${record.total.toLocaleString()}`;
+    const now = new Date();
+    const sapaanWord = getGreetingTimeWord(now);
+    const dateStr = now.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    const jamStr = now.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }).replace('.', ':');
+    const tanggalBayarFull = `${dateStr} pukul ${jamStr}`;
+    const totalFormatted = record.total.toLocaleString('id-ID');
+
+    // Perhitungan Saldo, Uang Diterima & Pengangsulan
+    const existingCustBal = getCustomerBalance(record.customer?.name, record.customer?.phone);
+    const saldoDigunakan = (paymentModal.useBalance && existingCustBal > 0)
+      ? Math.min(record.total, existingCustBal)
+      : 0;
+    const sisaTagihan = Math.max(0, record.total - saldoDigunakan);
+    const nominalBayar = sisaTagihan === 0 ? 0 : (parseFloat(paymentModal.inputAmount) || 0);
+    const selisihUang = nominalBayar - sisaTagihan;
+    const kembalianTunai = (selisihUang > 0 && paymentModal.excessAction === 'CHANGE') ? selisihUang : 0;
+    const saldoBaruSimpanan = (existingCustBal - saldoDigunakan) + 
+      (selisihUang > 0 && paymentModal.excessAction === 'SAVE_BALANCE' ? selisihUang : 0);
+
+    // Update Saldo Pelanggan
+    updateCustomerBalance(customerName, record.customer?.phone, saldoBaruSimpanan);
+
+    // Update status transaksi di riwayat menjadi LUNAS dan catat tanggal bayar serta rincian bayar (JANGAN HAPUS DATA)
+    const updatedRecord = {
+      ...record,
+      customer: {
+        ...record.customer,
+        status: 'LUNAS' as const
+      },
+      status_bayar: 'LUNAS',
+      tanggalBayar: tanggalBayarFull,
+      metodeBayar: paymentModal.paymentMethod,
+      uangDiterima: nominalBayar,
+      kembalian: kembalianTunai,
+      saldoTerpakai: saldoDigunakan,
+      saldoSimpananAkhir: saldoBaruSimpanan
+    };
+
+    setHistory(prev => {
+      const next = [...prev];
+      const targetIndex = next.findIndex(r => String(r.id) === String(record.id));
+      if (targetIndex >= 0) {
+        next[targetIndex] = updatedRecord;
+      } else {
+        next[idx] = updatedRecord;
+      }
+      return next;
+    });
+
+    if (String(notaId) === String(record.id)) {
+      setCustomer(prev => ({ ...prev, status: 'LUNAS' }));
     }
 
-    const message = `Halo kak ${customerName} 👋
-Nota #LT-${record.id} sudah LUNAS ✅
+    // Format konfirmasi pembayaran LUNAS sesuai instruksi user
+    let message = `Selamat ${sapaanWord}, Kak ${customerName}.
+Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebesar Rp ${totalFormatted} sudah kami terima pada tanggal ${dateStr} pukul ${jamStr}. Dengan ini status pembayaran LUNAS.
 
-LAUNDRY TANTE TIKA
-Jl. Zamrud Depan Gg. Zamrud 2 RT 42, Bontang Selatan
-WA: 0851-6994-9219
+🧾 Rincian Pembayaran:
+• No. Nota: #LT-${record.id}
+• Total Tagihan: Rp ${totalFormatted}
+• Metode Bayar: ${paymentModal.paymentMethod === 'TRANSFER' ? 'TRANSFER (TF)' : 'CASH (Tunai)'}`;
 
-📦 Layanan & Harga:
-${detailLayanan}
-💳 Total: Rp ${record.total.toLocaleString()}
+    if (saldoDigunakan > 0) {
+      message += `\n• Saldo Terpakai: Rp ${saldoDigunakan.toLocaleString('id-ID')}`;
+    }
+    if (nominalBayar > 0) {
+      message += `\n• Uang Diterima: Rp ${nominalBayar.toLocaleString('id-ID')}`;
+    }
+    if (kembalianTunai > 0) {
+      message += `\n• Kembalian Tunai (Pengangsulan): Rp ${kembalianTunai.toLocaleString('id-ID')}`;
+    }
+    if (saldoBaruSimpanan > 0) {
+      message += `\n• Sisa Saldo Simpanan Kakak: Rp ${saldoBaruSimpanan.toLocaleString('id-ID')} (Tersimpan untuk cucian berikutnya)`;
+    }
 
-Pakaian sudah bersih, rapi, dan wangi. Terima kasih! 🙏🧺✨
+    message += `\n\nTerima kasih banyak atas kepercayaannya mencuci di Laundry Tante Tika! 🙏✨`;
 
-"Pakaian bersih, hati senang"
-${upcomingEventText}`;
+    // Tutup popup pembayaran
+    setPaymentModal(prev => ({ ...prev, visible: false }));
 
     let cleanPhone = record.customer?.phone ? record.customer.phone.replace(/[^0-9]/g, '') : '';
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
 
+    const baseUrl = getBotBaseUrl(waBotConfig.ip) || DEFAULT_BOT_URL;
     const deliveryType = record.customer?.delivery || 'AMBIL SENDIRI';
-    const confirmCaption = getWACaption(deliveryType);
 
-    const confirmOrderPayload: Partial<PesananPayload> = {
-      no_nota: `LT-${record.id}`,
-      nama_pelanggan: customerName,
-      nomor_wa: cleanPhone,
-      alamat: record.customer?.address || '-',
-      rincian: items.map((item: any) => ({
-        nama_layanan: item.name,
-        qty: `${item.qty} ${(item.unit || '').toUpperCase()}`,
-        harga_satuan: item.price,
-        subtotal: item.subtotal || (item.price * item.qty)
-      })),
-      total: record.total,
-      status_bayar: 'LUNAS',
-      pengiriman: deliveryType,
-      caption: confirmCaption,
-      catatan_footer: upcomingEventText || 'Pakaian Bersih, Hati Senang'
-    };
+    if (waBotConfig.enabled && baseUrl && cleanPhone) {
+      setIsSendingWA(true);
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 15000);
 
-    const result = await sendViaBotOrFallback(cleanPhone, message, confirmCaption, confirmOrderPayload);
+        let botSuccess = false;
+        let serverMessage = '';
 
-    setHistory(prev => prev.filter((_, i) => i !== idx));
+        // Coba kirim via endpoint /send terlebih dahulu
+        try {
+          const sendRes = await fetch(`${baseUrl}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone: cleanPhone,
+              message: message,
+              caption: `Konfirmasi Pembayaran LUNAS #LT-${record.id}`
+            }),
+            signal: controller.signal
+          });
+          if (sendRes.ok) {
+            const sendData = await sendRes.json().catch(() => ({ success: true }));
+            if (sendData.success !== false) {
+              botSuccess = true;
+              serverMessage = sendData.message || 'Konfirmasi pembayaran berhasil dikirim via bot!';
+            }
+          }
+        } catch {
+          // Lanjut ke percobaan berikutnya
+        }
 
-    if (result.sentViaBot) {
+        // Jika /send belum berhasil, coba via /api/laundry/kirim-nota
+        if (!botSuccess) {
+          const confirmOrderPayload: Partial<PesananPayload> = {
+            no_nota: `LT-${record.id}`,
+            nama_pelanggan: customerName,
+            nomor_wa: cleanPhone,
+            alamat: record.customer?.address || '-',
+            rincian: (record.cart || record.items || []).map((item: any) => ({
+              nama_layanan: item.name,
+              qty: `${item.qty} ${(item.unit || '').toUpperCase()}`,
+              harga_satuan: item.price,
+              subtotal: item.subtotal || (item.price * item.qty)
+            })),
+            total: record.total,
+            status_bayar: 'LUNAS',
+            pengiriman: deliveryType,
+            caption: message,
+            phone: cleanPhone,
+            message: message,
+            catatan_footer: 'Pembayaran LUNAS'
+          };
+
+          const notaRes = await fetch(`${baseUrl}/api/laundry/kirim-nota`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(confirmOrderPayload),
+            signal: controller.signal
+          }).catch(() => null);
+
+          if (notaRes && notaRes.ok) {
+            const notaData = await notaRes.json().catch(() => ({ success: true }));
+            if (notaData.success !== false) {
+              botSuccess = true;
+              serverMessage = notaData.message || 'Konfirmasi LUNAS terkirim via bot!';
+            }
+          }
+        }
+
+        clearTimeout(timer);
+        setIsSendingWA(false);
+
+        if (botSuccess) {
+          showModal(
+            "Pembayaran LUNAS Terkirim ✅",
+            `Konfirmasi pembayaran LUNAS untuk Kak ${customerName} berhasil dikirim via Bot WhatsApp!\n\nMetode: ${paymentModal.paymentMethod === 'TRANSFER' ? 'Transfer' : 'Cash'}\n${kembalianTunai > 0 ? `Pengangsulan Tunai: Rp ${kembalianTunai.toLocaleString('id-ID')}\n` : ''}${saldoBaruSimpanan > 0 ? `Sisa Saldo Simpanan: Rp ${saldoBaruSimpanan.toLocaleString('id-ID')}` : ''}`
+          );
+          return;
+        }
+      } catch (err) {
+        console.warn('Bot gagal mengirim, otomatis beralih ke WhatsApp:', err);
+      }
+      setIsSendingWA(false);
+
+      // Fallback ke WhatsApp Biasa
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
       showModal(
-        "Lunas & Terkirim Otomatis ✅",
-        `Konfirmasi LUNAS untuk kak ${customerName} telah dikirim otomatis lewat Server Bot WhatsApp, dan riwayat (#LT-${record.id}) telah dihapus.`
+        "Pembayaran LUNAS ✅",
+        `Status transaksi #LT-${record.id} telah diubah menjadi LUNAS (Tgl Bayar: ${tanggalBayarFull}). Pesan konfirmasi dibuka di WhatsApp biasa karena Server Bot sedang offline.`
       );
-    } else if (result.usedFallback) {
-      showModal(
-        "Pembayaran Dikonfirmasi",
-        `Server Bot sedang offline, konfirmasi LUNAS untuk kak ${customerName} otomatis dibuka di WhatsApp biasa & riwayat (#LT-${record.id}) dihapus.`
-      );
-    } else {
-      showModal(
-        "Pembayaran Dikonfirmasi", 
-        `Konfirmasi pembayaran LUNAS untuk kak ${customerName} telah dibuka di WhatsApp, dan data transaksi (#LT-${record.id}) telah otomatis dihapus dari riwayat.`
-      );
+      return;
     }
+
+    // Jika bot nonaktif atau fallback umum
+    if (cleanPhone) {
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    }
+
+    showModal(
+      "Pembayaran LUNAS ✅",
+      `Status transaksi #LT-${record.id} telah diubah menjadi LUNAS (Tgl Bayar: ${tanggalBayarFull}) dan pesan konfirmasi telah disiapkan di WhatsApp.`
+    );
   };
 
   return (
@@ -1269,6 +1562,7 @@ ${upcomingEventText}`;
                     delivery: 'AMBIL SENDIRI'
                   });
                   setNotaId(Math.floor(1000 + Math.random() * 9000));
+                  setLoadedArrivalDate(null);
                   setConfirmModal(prev => ({ ...prev, visible: false }));
                 }
               });
@@ -1293,7 +1587,7 @@ ${upcomingEventText}`;
             onClick={() => setActiveTab('current')}
             className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'current' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}
           >
-            Nota Baru
+            {loadedArrivalDate ? `Edit #LT-${notaId}` : 'Nota Baru'}
           </button>
           <button 
             onClick={() => setActiveTab('history')}
@@ -1314,6 +1608,28 @@ ${upcomingEventText}`;
               exit={{ opacity: 0, y: -20 }}
               className="space-y-6"
             >
+              {/* Banner Mode Edit Nota (Tanggal Masuk Terkunci & Aman) */}
+              {loadedArrivalDate && (
+                <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Clock size={16} className="text-amber-600 shrink-0" />
+                    <div className="text-[10px] text-amber-950 leading-tight">
+                      <p className="font-black uppercase tracking-wide">Edit Transaksi #LT-{notaId}</p>
+                      <p className="text-[9px] text-amber-700 mt-0.5">
+                        Tgl Masuk Terkunci: <strong>{loadedArrivalDate}</strong> (Tidak berubah)
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => resetForm()}
+                    className="px-3 py-1.5 bg-white hover:bg-amber-100/80 active:bg-amber-200 text-amber-900 rounded-xl text-[9px] font-black uppercase tracking-wider border border-amber-200/80 shadow-xs transition-colors shrink-0"
+                    title="Batal edit dan buat nota transaksi baru"
+                  >
+                    Batal Edit
+                  </button>
+                </div>
+              )}
+
               {/* Data Pelanggan */}
               <section className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -1324,6 +1640,35 @@ ${upcomingEventText}`;
                   <button onClick={() => setShowCustomerList(true)} className="w-full py-3 bg-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center justify-center gap-2">
                     <User size={12} /> Pilih Pelanggan ({savedCustomers.length})
                   </button>
+
+                  {/* Deteksi Saldo Simpanan Pelanggan Otomatis */}
+                  {(() => {
+                    const custBal = getCustomerBalance(customer.name, customer.phone);
+                    if (custBal > 0) {
+                      return (
+                        <div className="bg-emerald-50 border border-emerald-200/90 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
+                              <Wallet size={16} />
+                            </div>
+                            <div className="text-[10px] leading-tight">
+                              <p className="font-black uppercase tracking-wide text-emerald-950">
+                                Saldo Tersedia: Rp {custBal.toLocaleString('id-ID')}
+                              </p>
+                              <p className="text-[9px] text-emerald-700 mt-0.5">
+                                Pelanggan memiliki deposit uang lebih. Otomatis dapat digunakan saat pelunasan tagihan.
+                              </p>
+                            </div>
+                          </div>
+                          <span className="px-2.5 py-1 bg-white text-emerald-800 rounded-lg text-[9px] font-black uppercase tracking-wider border border-emerald-200 shrink-0">
+                            Tersedia
+                          </span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <input 
                     type="text" 
                     placeholder="NAMA PELANGGAN" 
@@ -1495,7 +1840,7 @@ ${upcomingEventText}`;
                     <div className="text-right">
                       <Clock size={10} className="ml-auto text-slate-400 mb-1" />
                       <p className="text-[7px] font-bold text-slate-400 uppercase leading-relaxed font-mono">
-                        {currentTime}
+                        {loadedArrivalDate || currentTime}
                       </p>
                     </div>
                   </div>
@@ -1571,10 +1916,36 @@ ${upcomingEventText}`;
                               <span>{record.customer.phone}</span>
                             </p>
                           )}
-                          <p className="text-[8px] font-medium text-slate-400 flex items-center gap-1">
-                            <Clock size={10} className="text-slate-300" />
-                            <span>{record.time}</span>
-                          </p>
+                          
+                          {/* Tiga Pencatatan Tanggal: Masuk, Pengantaran, Bayar */}
+                          <div className="space-y-1 pt-1.5 border-t border-slate-100">
+                            <p className="text-[8px] font-medium text-slate-600 flex items-center gap-1.5">
+                              <Clock size={10} className="text-blue-500 shrink-0" />
+                              <span><strong className="font-semibold text-slate-800">Tgl Masuk:</strong> {record.tanggalDatang || record.time || '-'}</span>
+                            </p>
+                            {record.tanggalAntar && (
+                              <p className="text-[8px] font-medium text-amber-700 flex items-center gap-1.5">
+                                <Truck size={10} className="text-amber-500 shrink-0" />
+                                <span><strong className="font-semibold text-amber-800">Tgl Pengantaran:</strong> {record.tanggalAntar}</span>
+                              </p>
+                            )}
+                            {record.tanggalBayar && (
+                              <div className="space-y-0.5">
+                                <p className="text-[8px] font-medium text-emerald-700 flex items-center gap-1.5">
+                                  <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
+                                  <span><strong className="font-semibold text-emerald-800">Tgl Bayar:</strong> {record.tanggalBayar}</span>
+                                </p>
+                                {record.metodeBayar && (
+                                  <p className="text-[8px] font-semibold text-slate-600 ml-4">
+                                    Via: <span className="text-emerald-700">{record.metodeBayar === 'TRANSFER' ? 'Transfer (TF)' : 'Cash (Tunai)'}</span>
+                                    {record.uangDiterima > 0 && ` • Diterima: Rp ${record.uangDiterima.toLocaleString('id-ID')}`}
+                                    {record.kembalian > 0 && ` • Pengangsulan: Rp ${record.kembalian.toLocaleString('id-ID')}`}
+                                    {record.saldoTerpakai > 0 && ` • Pakai Saldo: Rp ${record.saldoTerpakai.toLocaleString('id-ID')}`}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Total Tagihan</span>
@@ -1600,12 +1971,16 @@ ${upcomingEventText}`;
 
                       <div className="pt-1 flex gap-2 items-center">
                         <button 
-                          onClick={() => handleConfirmPayment(record, idx)}
-                          className="flex-1 py-3 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm shadow-emerald-600/20 active:scale-[0.98] transition-all"
-                          title="Konfirmasi Lunas, Kirim ke WhatsApp & Hapus Riwayat Otomatis"
+                          onClick={() => openPaymentModal(record, idx)}
+                          className={`flex-1 py-3 px-3 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all ${
+                            isLunas 
+                              ? 'bg-emerald-700 hover:bg-emerald-800 shadow-emerald-700/20' 
+                              : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                          }`}
+                          title="Input Pembayaran & Hitung Pengangsulan"
                         >
                           <CheckCircle2 size={14} className="text-emerald-200" />
-                          <span>Konfirmasi / Lunas</span>
+                          <span>{isLunas ? 'Lunas (Kirim Bukti WA)' : 'Konfirmasi / Lunas'}</span>
                           <MessageCircle size={13} className="text-emerald-200" />
                         </button>
 
@@ -1614,12 +1989,14 @@ ${upcomingEventText}`;
                             setNotaId(record.id); 
                             setCart(record.cart || record.items || []);
                             setCustomer(record.customer);
+                            setLoadedArrivalDate(record.tanggalDatang || record.time || null);
                             setActiveTab('current');
                           }}
-                          className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95"
-                          title="Buka Nota"
+                          className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5"
+                          title="Buka & Edit Nota (Tanggal Masuk Tetap Terkunci)"
                         >
-                          Buka
+                          <FileText size={12} className="text-slate-500" />
+                          <span>Buka</span>
                         </button>
 
                         <button 
@@ -1710,7 +2087,15 @@ ${upcomingEventText}`;
                     className="w-full text-left bg-slate-50 hover:bg-slate-100 active:bg-slate-200/80 rounded-2xl px-4 py-3 flex justify-between items-center transition-colors cursor-pointer group"
                   >
                     <div className="pr-2 flex-1">
-                      <p className="text-xs font-black text-slate-800 uppercase group-hover:text-blue-600 transition-colors">{c.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs font-black text-slate-800 uppercase group-hover:text-blue-600 transition-colors">{c.name}</p>
+                        {typeof c.balance === 'number' && c.balance > 0 && (
+                          <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <Wallet size={9} />
+                            Saldo: Rp {c.balance.toLocaleString('id-ID')}
+                          </span>
+                        )}
+                      </div>
                       {c.phone && <p className="text-[10px] text-slate-400">{c.phone}</p>}
                       {c.address && <p className="text-[10px] text-slate-400">{c.address}</p>}
                     </div>
@@ -2134,6 +2519,326 @@ ${upcomingEventText}`;
             </motion.div>
           </motion.div>
         )}
+
+        {/* Modal Kasir: Input Pembayaran (CASH / TF), Hitung Pengangsulan & Simpan Saldo Pelanggan */}
+        {paymentModal.visible && paymentModal.record && (() => {
+          const rec = paymentModal.record;
+          const customerName = rec.customer?.name?.trim() ? rec.customer.name.trim() : 'Pelanggan';
+          const existingCustBal = getCustomerBalance(rec.customer?.name, rec.customer?.phone);
+          const canUseBalance = existingCustBal > 0;
+          const saldoDigunakan = (paymentModal.useBalance && canUseBalance)
+            ? Math.min(rec.total, existingCustBal)
+            : 0;
+          const sisaTagihan = Math.max(0, rec.total - saldoDigunakan);
+          const nominalBayar = sisaTagihan === 0 ? 0 : (parseFloat(paymentModal.inputAmount) || 0);
+          const selisihUang = nominalBayar - sisaTagihan;
+          const isCukup = sisaTagihan === 0 || selisihUang >= 0;
+          const kembalianTunai = (isCukup && selisihUang > 0 && paymentModal.excessAction === 'CHANGE') ? selisihUang : 0;
+          const saldoBaruSimpanan = (existingCustBal - saldoDigunakan) + 
+            (isCukup && selisihUang > 0 && paymentModal.excessAction === 'SAVE_BALANCE' ? selisihUang : 0);
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-[280] backdrop-blur-sm p-0 sm:p-4"
+            >
+              <motion.div
+                initial={{ y: 80, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 80, opacity: 0 }}
+                className="bg-white w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 max-h-[92vh] overflow-y-auto space-y-4 shadow-2xl"
+              >
+                {/* Header Modal */}
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-sm shadow-emerald-500/20">
+                      <Banknote size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-black text-sm uppercase tracking-wide text-slate-900">Input Pembayaran</h3>
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-800">
+                          #LT-{rec.id}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-medium">Hitung pengangsulan & simpan saldo uang lebih</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPaymentModal(prev => ({ ...prev, visible: false }))}
+                    className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+
+                {/* Ringkasan Tagihan */}
+                <div className="bg-slate-900 rounded-2xl p-4 text-white flex justify-between items-center">
+                  <div>
+                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                      Pelanggan: <span className="text-white font-bold">{customerName}</span>
+                    </p>
+                    <p className="text-2xl font-black font-mono mt-0.5">Rp {rec.total.toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[8px] font-black px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 uppercase">
+                      {rec.customer?.delivery || 'AMBIL SENDIRI'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pengecekan & Opsi Saldo Simpanan Pelanggan */}
+                {canUseBalance && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Wallet size={16} className="text-emerald-600" />
+                        <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
+                          Saldo Simpanan Tersedia
+                        </span>
+                      </div>
+                      <span className="text-xs font-black text-emerald-700 font-mono">
+                        Rp {existingCustBal.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <label className="text-[10px] font-bold text-emerald-800 flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={paymentModal.useBalance}
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            const newRem = checked ? Math.max(0, rec.total - existingCustBal) : rec.total;
+                            setPaymentModal(prev => ({
+                              ...prev,
+                              useBalance: checked,
+                              inputAmount: newRem === 0 ? '0' : String(newRem)
+                            }));
+                          }}
+                          className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+                        />
+                        <span>Gunakan saldo simpanan untuk potong tagihan</span>
+                      </label>
+                    </div>
+
+                    {paymentModal.useBalance && (
+                      <div className="bg-white/80 rounded-xl p-2.5 text-[9px] text-emerald-900 space-y-1 font-mono border border-emerald-100">
+                        <div className="flex justify-between">
+                          <span>Tagihan Awal:</span>
+                          <span>Rp {rec.total.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-emerald-700">
+                          <span>- Terpotong Saldo:</span>
+                          <span>Rp {saldoDigunakan.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-emerald-200/60 pt-1 font-black text-[10px]">
+                          <span>Sisa Tagihan yang Harus Dibayar:</span>
+                          <span className="text-slate-900">Rp {sisaTagihan.toLocaleString('id-ID')}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Pilihan Metode Pembayaran: CASH vs TRANSFER */}
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Pilih Metode Pembayaran
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentModal(prev => ({ ...prev, paymentMethod: 'CASH' }))}
+                      className={`py-3.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-black text-xs uppercase tracking-wider transition-all btn-press ${
+                        paymentModal.paymentMethod === 'CASH'
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
+                          : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Coins size={16} />
+                      <span>💵 CASH (Tunai)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentModal(prev => ({ ...prev, paymentMethod: 'TRANSFER' }))}
+                      className={`py-3.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-black text-xs uppercase tracking-wider transition-all btn-press ${
+                        paymentModal.paymentMethod === 'TRANSFER'
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm'
+                          : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      <CreditCard size={16} />
+                      <span>📱 TRANSFER (TF)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Input Jumlah Uang yang Diterima (jika sisaTagihan > 0) */}
+                {sisaTagihan > 0 ? (
+                  <div className="space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Uang yang Diterima
+                      </label>
+                      <span className="text-[10px] font-bold text-slate-500 font-mono">
+                        Harus Bayar: Rp {sisaTagihan.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">
+                        Rp
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={paymentModal.inputAmount}
+                        onChange={e => setPaymentModal(prev => ({ ...prev, inputAmount: e.target.value }))}
+                        className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-mono font-black text-base text-slate-900 outline-none focus:border-blue-500 focus:bg-white"
+                      />
+                    </div>
+
+                    {/* Tombol Nominal Cepat */}
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentModal(prev => ({ ...prev, inputAmount: String(sisaTagihan) }))}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-[9px] font-black uppercase text-slate-700 transition-colors"
+                      >
+                        Uang Pas
+                      </button>
+                      {[10000, 20000, 50000, 100000].map(val => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setPaymentModal(prev => ({ ...prev, inputAmount: String(val) }))}
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-[9px] font-bold text-slate-600 transition-colors font-mono"
+                        >
+                          Rp {val.toLocaleString('id-ID')}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setPaymentModal(prev => ({ ...prev, inputAmount: '' }))}
+                        className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 rounded-xl text-[9px] font-bold text-rose-600 transition-colors"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-[10px] text-emerald-800 font-bold flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <span>Tagihan Rp {rec.total.toLocaleString('id-ID')} terpotong lunas oleh Saldo Simpanan (Rp {saldoDigunakan.toLocaleString('id-ID')}). Tanpa perlu bayar tunai lagi.</span>
+                  </div>
+                )}
+
+                {/* Perhitungan Pengangsulan / Kembalian & Saldo Simpanan */}
+                {sisaTagihan > 0 && selisihUang > 0 && (
+                  <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
+                          Uang Lebih (Pengangsulan)
+                        </p>
+                        <p className="text-xl font-black text-amber-800 font-mono">
+                          Rp {selisihUang.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      <span className="px-2.5 py-1 bg-amber-100 text-amber-900 rounded-xl text-[9px] font-black uppercase">
+                        Kelebihan Uang
+                      </span>
+                    </div>
+
+                    {/* Opsi Tindakan Uang Lebih */}
+                    <div className="space-y-2 pt-1 border-t border-amber-200/70">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-950">
+                        Pilih Perlakuan Uang Lebih:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentModal(prev => ({ ...prev, excessAction: 'CHANGE' }))}
+                          className={`p-3 rounded-xl border-2 text-left transition-all ${
+                            paymentModal.excessAction === 'CHANGE'
+                              ? 'border-emerald-500 bg-white shadow-sm ring-1 ring-emerald-500'
+                              : 'border-amber-200 bg-amber-50/50 hover:bg-white'
+                          }`}
+                        >
+                          <p className="text-[10px] font-black text-slate-900 uppercase">
+                            A. Kembalikan Tunai
+                          </p>
+                          <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
+                            Pengangsulan Rp {selisihUang.toLocaleString('id-ID')} diserahkan langsung ke pelanggan.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setPaymentModal(prev => ({ ...prev, excessAction: 'SAVE_BALANCE' }))}
+                          className={`p-3 rounded-xl border-2 text-left transition-all ${
+                            paymentModal.excessAction === 'SAVE_BALANCE'
+                              ? 'border-blue-600 bg-white shadow-sm ring-1 ring-blue-600'
+                              : 'border-amber-200 bg-amber-50/50 hover:bg-white'
+                          }`}
+                        >
+                          <p className="text-[10px] font-black text-blue-900 uppercase flex items-center gap-1">
+                            <Wallet size={11} className="text-blue-600" />
+                            B. Simpan Jadi Saldo
+                          </p>
+                          <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
+                            Disimpan otomatis untuk memotong cucian Kak {customerName} berikutnya.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sisa Saldo Tersimpan Pelanggan */}
+                {saldoBaruSimpanan > 0 && (
+                  <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 flex justify-between items-center text-[10px]">
+                    <span className="font-bold text-slate-500">Sisa Saldo Tersimpan Pelanggan:</span>
+                    <span className="font-black text-emerald-700 font-mono">
+                      Rp {saldoBaruSimpanan.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Peringatan jika uang masih kurang */}
+                {sisaTagihan > 0 && selisihUang < 0 && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-[10px] text-rose-700 font-bold flex items-center gap-2">
+                    <AlertCircle size={15} className="shrink-0" />
+                    <span>Uang yang diterima masih kurang Rp {Math.abs(selisihUang).toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+
+                {/* Tombol Batal & Konfirmasi */}
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModal(prev => ({ ...prev, visible: false }))}
+                    className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-colors btn-press"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!isCukup || isSendingWA}
+                    onClick={handleExecutePayment}
+                    className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider shadow-lg shadow-emerald-600/20 disabled:opacity-40 transition-all btn-press flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={16} />
+                    <span>{isSendingWA ? 'Memproses...' : 'Konfirmasi & Kirim WA'}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
 
       </AnimatePresence>
     </div>
