@@ -635,10 +635,30 @@ export default function App() {
     setLoadedArrivalDate(null);
   };
 
-  const handlePrint = async () => {
-    if (cart.length === 0) {
-      showModal("Oops!", "Keranjang masih kosong.");
-      return;
+  interface PrintReceiptData {
+    notaId: number | string;
+    customer: CustomerInfo;
+    cart: Service[];
+    total: number;
+    timeStr: string;
+    paymentDetails?: {
+      metodeBayar?: 'CASH' | 'TRANSFER';
+      saldoTerpakai?: number;
+      uangDiterima?: number;
+      kembalian?: number;
+      excessAction?: 'CHANGE' | 'SAVE_BALANCE';
+      saldoSimpananAkhir?: number;
+      status?: string;
+    };
+  }
+
+  const printThermalReceipt = async (
+    data: PrintReceiptData,
+    options?: { saveAndReset?: boolean; onSuccessMessage?: string }
+  ): Promise<boolean> => {
+    if (!data.cart || data.cart.length === 0) {
+      showModal("Oops!", "Keranjang/layanan masih kosong.");
+      return false;
     }
     try {
       const { BleClient } = await import('@capacitor-community/bluetooth-le');
@@ -730,7 +750,7 @@ export default function App() {
         targetChar = '00002af1-0000-1000-8000-00805f9b34fb';
       }
 
-      let printTime = (loadedArrivalDate || currentTime).replace(' pukul ', ' ').substring(0, 32);
+      const printTime = (data.timeStr || currentTime).replace(' pukul ', ' ').substring(0, 32);
       
       let text = "\x1B\x40\x1B\x61\x01\x1B\x45\x01LAUNDRY TANTE TIKA\n\x1B\x45\x00";
       text += "Jl. Zamrud Depan Gg. Zamrud 2\nRT 42, Bontang Selatan\n";
@@ -738,19 +758,24 @@ export default function App() {
       text += "--------------------------------\n\x1B\x61\x00";
       
       const padR = (str: string, len: number) => (str || "-").substring(0, len).padEnd(len, ' ');
+      const formatTwoCols = (left: string, right: string, maxLen: number = 32) => {
+        const leftStr = left.substring(0, maxLen - right.length - 1);
+        const spaces = Math.max(1, maxLen - leftStr.length - right.length);
+        return leftStr + " ".repeat(spaces) + right;
+      };
       
-      text += padR("Nota : #LT-" + notaId, 32) + "\n";
+      text += padR("Nota : #LT-" + data.notaId, 32) + "\n";
       text += padR("Tgl  : " + printTime, 32) + "\n";
-      text += padR("Nama : " + customer.name, 32) + "\n";
-      text += padR("Alm  : " + customer.address, 32) + "\n";
-      text += padR("WA   : " + customer.phone, 32) + "\n";
+      text += padR("Nama : " + (data.customer.name || '-'), 32) + "\n";
+      text += padR("Alm  : " + (data.customer.address || '-'), 32) + "\n";
+      text += padR("WA   : " + (data.customer.phone || '-'), 32) + "\n";
       text += "--------------------------------\n";
 
-      cart.forEach(i => {
+      data.cart.forEach(i => {
         text += padR(i.name, 32) + "\n";
-        let qtyText = i.qty + " " + i.unit.toUpperCase();
-        let priceText = "Rp " + i.price.toLocaleString();
-        let subtotalText = "Rp " + i.subtotal.toLocaleString();
+        let qtyText = i.qty + " " + (i.unit || '').toUpperCase();
+        let priceText = "Rp " + i.price.toLocaleString('id-ID');
+        let subtotalText = "Rp " + i.subtotal.toLocaleString('id-ID');
         
         let detailLine = qtyText + " x " + priceText;
         let spacesNeeded = 32 - detailLine.length - subtotalText.length - 3;
@@ -760,10 +785,55 @@ export default function App() {
       });
 
       text += "--------------------------------\n";
-      text += "TOTAL: Rp " + total.toLocaleString() + "\n";
-      text += "STATUS: " + customer.status + "\n";
-      text += "METODE: " + customer.delivery + "\n";
+      text += formatTwoCols("TOTAL TAGIHAN", "Rp " + data.total.toLocaleString('id-ID')) + "\n";
+
+      const pd = data.paymentDetails;
+      if (pd) {
+        if (pd.metodeBayar) {
+          const metodeLabel = pd.metodeBayar === 'TRANSFER' ? 'TRANSFER (TF)' : 'CASH (TUNAI)';
+          text += formatTwoCols("METODE BAYAR", metodeLabel) + "\n";
+        }
+
+        if (pd.saldoTerpakai && pd.saldoTerpakai > 0) {
+          text += formatTwoCols("POTONG SALDO", "-Rp " + pd.saldoTerpakai.toLocaleString('id-ID')) + "\n";
+          const sisaTagihan = Math.max(0, data.total - pd.saldoTerpakai);
+          text += formatTwoCols("SISA TAGIHAN", "Rp " + sisaTagihan.toLocaleString('id-ID')) + "\n";
+        }
+
+        if (pd.uangDiterima && pd.uangDiterima > 0) {
+          text += formatTwoCols("UANG DITERIMA", "Rp " + pd.uangDiterima.toLocaleString('id-ID')) + "\n";
+        }
+
+        if (pd.kembalian && pd.kembalian > 0) {
+          if (pd.excessAction === 'SAVE_BALANCE') {
+            text += formatTwoCols("UANG LEBIH", "Rp " + pd.kembalian.toLocaleString('id-ID')) + "\n";
+            text += formatTwoCols("PERLAKUAN", "DISIMPAN KE SALDO") + "\n";
+            if (pd.saldoSimpananAkhir !== undefined && pd.saldoSimpananAkhir > 0) {
+              text += formatTwoCols("SISA SALDO PLG", "Rp " + pd.saldoSimpananAkhir.toLocaleString('id-ID')) + "\n";
+            }
+          } else {
+            text += formatTwoCols("PENGANGSULAN", "Rp " + pd.kembalian.toLocaleString('id-ID') + " (TUNAI)") + "\n";
+            if (pd.saldoSimpananAkhir !== undefined && pd.saldoSimpananAkhir > 0) {
+              text += formatTwoCols("SISA SALDO PLG", "Rp " + pd.saldoSimpananAkhir.toLocaleString('id-ID')) + "\n";
+            }
+          }
+        } else if (pd.saldoSimpananAkhir !== undefined && pd.saldoSimpananAkhir > 0) {
+          text += formatTwoCols("SISA SALDO PLG", "Rp " + pd.saldoSimpananAkhir.toLocaleString('id-ID')) + "\n";
+        }
+
+        const finalStatus = pd.status || data.customer.status || 'LUNAS';
+        text += formatTwoCols("STATUS BAYAR", finalStatus) + "\n";
+      } else {
+        text += formatTwoCols("STATUS BAYAR", data.customer.status || 'BELUM LUNAS') + "\n";
+      }
+
+      text += formatTwoCols("METODE PENGIRIMAN", data.customer.delivery || 'AMBIL SENDIRI') + "\n";
       text += "--------------------------------\n";
+
+      if (pd && pd.saldoSimpananAkhir && pd.saldoSimpananAkhir > 0) {
+        text += "\x1B\x61\x01* Saldo Rp " + pd.saldoSimpananAkhir.toLocaleString('id-ID') + " *\ntersimpan untuk cucian berikutnya\n--------------------------------\n\x1B\x61\x00";
+      }
+
       text += "\x1B\x61\x01PAKAIAN BERSIH, HATI SENANG\n";
       if (upcomingEventText && upcomingEventText !== 'Pakaian Bersih Hati Senang') {
         const printEventText = upcomingEventText.replace(/[^\x00-\x7F]/g, "").trim();
@@ -772,10 +842,10 @@ export default function App() {
       text += "\x0A\x0A\x0A\x0A";
 
       const encoder = new TextEncoder();
-      const data = encoder.encode(text);
+      const dataEncoded = encoder.encode(text);
       const chunkSize = 20;
-      for (let i = 0; i < data.length; i += chunkSize) {
-        const chunk = data.slice(i, i + chunkSize);
+      for (let i = 0; i < dataEncoded.length; i += chunkSize) {
+        const chunk = dataEncoded.slice(i, i + chunkSize);
         const dataView = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength);
         if (isWithoutResponse) {
           await BleClient.writeWithoutResponse(device.deviceId, targetService, targetChar, dataView);
@@ -792,16 +862,65 @@ export default function App() {
         console.warn("Disconnect note:", dcErr);
       }
 
-      saveToHistory();
-      resetForm();
-      showModal("Berhasil", "Nota telah dicetak. Transaksi telah disimpan di riwayat.");
+      if (options?.saveAndReset) {
+        saveToHistory();
+        resetForm();
+      }
+
+      showModal("Berhasil Mencetak ✅", options?.onSuccessMessage || "Nota thermal telah dicetak. Transaksi telah disimpan di riwayat.");
+      return true;
     } catch (error: any) {
       const msg = error?.message || String(error);
       if (msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('closed')) {
-        return;
+        return false;
       }
       showModal("Gagal Mencetak", `Pastikan Bluetooth & Lokasi (GPS) HP aktif serta Printer Bluetooth sudah menyala.\n\nDetail: ${msg}`);
+      return false;
     }
+  };
+
+  const handlePrint = async () => {
+    // Cari data pembayaran jika nota ini sebelumnya pernah dilunasi di riwayat
+    const existingRecord = history.find((r: any) => String(r.id) === String(notaId));
+    const pd = existingRecord?.tanggalBayar ? {
+      metodeBayar: existingRecord.metodeBayar,
+      saldoTerpakai: existingRecord.saldoTerpakai,
+      uangDiterima: existingRecord.uangDiterima,
+      kembalian: existingRecord.kembalian,
+      excessAction: existingRecord.excessAction,
+      saldoSimpananAkhir: existingRecord.saldoSimpananAkhir,
+      status: existingRecord.customer?.status || 'LUNAS'
+    } : undefined;
+
+    await printThermalReceipt({
+      notaId,
+      customer,
+      cart,
+      total,
+      timeStr: loadedArrivalDate || currentTime,
+      paymentDetails: pd
+    }, { saveAndReset: true, onSuccessMessage: "Nota telah dicetak. Transaksi telah disimpan di riwayat." });
+  };
+
+  const handlePrintRecord = async (record: any) => {
+    const pd = record.tanggalBayar || record.metodeBayar ? {
+      metodeBayar: record.metodeBayar,
+      saldoTerpakai: record.saldoTerpakai,
+      uangDiterima: record.uangDiterima,
+      kembalian: record.kembalian,
+      excessAction: record.excessAction,
+      saldoSimpananAkhir: record.saldoSimpananAkhir,
+      status: record.customer?.status || record.status_bayar || 'LUNAS'
+    } : undefined;
+
+    await printThermalReceipt({
+      notaId: record.id,
+      customer: record.customer,
+      cart: record.cart || record.items || [],
+      total: record.total,
+      timeStr: record.tanggalDatang || record.time || currentTime,
+      paymentDetails: pd
+    }, { saveAndReset: false, onSuccessMessage: `Struk transaksi #LT-${record.id} berhasil dicetak ulang.` });
   };
 
   const getBotBaseUrl = (rawIp?: string) => {
@@ -1353,7 +1472,8 @@ _"PAKAIAN BERSIH, HATI SENANG"_
       tanggalBayar: tanggalBayarFull,
       metodeBayar: paymentModal.paymentMethod,
       uangDiterima: nominalBayar,
-      kembalian: kembalianTunai,
+      kembalian: selisihUang > 0 ? selisihUang : 0,
+      excessAction: paymentModal.excessAction,
       saldoTerpakai: saldoDigunakan,
       saldoSimpananAkhir: saldoBaruSimpanan
     };
@@ -1511,6 +1631,71 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
       "Pembayaran LUNAS ✅",
       `Status transaksi #LT-${record.id} telah diubah menjadi LUNAS (Tgl Bayar: ${tanggalBayarFull}) dan pesan konfirmasi telah disiapkan di WhatsApp.`
     );
+  };
+
+  const handlePrintFromModal = async () => {
+    if (!paymentModal.record) return;
+    const rec = paymentModal.record;
+    const existingCustBal = getCustomerBalance(rec.customer?.name, rec.customer?.phone);
+    const canUseBal = existingCustBal > 0;
+    const sldPakai = (paymentModal.useBalance && canUseBal) ? Math.min(rec.total, existingCustBal) : 0;
+    const sisaTagihan = Math.max(0, rec.total - sldPakai);
+    const nomBayar = sisaTagihan === 0 ? 0 : (parseFloat(paymentModal.inputAmount) || 0);
+    const selisih = nomBayar - sisaTagihan;
+    const kembalian = selisih > 0 ? selisih : 0;
+    const saldoAkhir = (existingCustBal - sldPakai) + (selisih > 0 && paymentModal.excessAction === 'SAVE_BALANCE' ? selisih : 0);
+
+    await printThermalReceipt({
+      notaId: rec.id,
+      customer: rec.customer,
+      cart: rec.cart || rec.items || [],
+      total: rec.total,
+      timeStr: rec.tanggalDatang || rec.time || currentTime,
+      paymentDetails: {
+        metodeBayar: paymentModal.paymentMethod,
+        saldoTerpakai: sldPakai,
+        uangDiterima: nomBayar,
+        kembalian: kembalian,
+        excessAction: paymentModal.excessAction,
+        saldoSimpananAkhir: saldoAkhir,
+        status: 'LUNAS'
+      }
+    }, { saveAndReset: false, onSuccessMessage: `Struk pembayaran #LT-${rec.id} berhasil dicetak!` });
+  };
+
+  const handlePrintAndConfirmPayment = async () => {
+    if (!paymentModal.record) return;
+    const rec = paymentModal.record;
+    const existingCustBal = getCustomerBalance(rec.customer?.name, rec.customer?.phone);
+    const canUseBal = existingCustBal > 0;
+    const sldPakai = (paymentModal.useBalance && canUseBal) ? Math.min(rec.total, existingCustBal) : 0;
+    const sisaTagihan = Math.max(0, rec.total - sldPakai);
+    const nomBayar = sisaTagihan === 0 ? 0 : (parseFloat(paymentModal.inputAmount) || 0);
+    const selisih = nomBayar - sisaTagihan;
+    const kembalian = selisih > 0 ? selisih : 0;
+    const saldoAkhir = (existingCustBal - sldPakai) + (selisih > 0 && paymentModal.excessAction === 'SAVE_BALANCE' ? selisih : 0);
+
+    const printed = await printThermalReceipt({
+      notaId: rec.id,
+      customer: rec.customer,
+      cart: rec.cart || rec.items || [],
+      total: rec.total,
+      timeStr: rec.tanggalDatang || rec.time || currentTime,
+      paymentDetails: {
+        metodeBayar: paymentModal.paymentMethod,
+        saldoTerpakai: sldPakai,
+        uangDiterima: nomBayar,
+        kembalian: kembalian,
+        excessAction: paymentModal.excessAction,
+        saldoSimpananAkhir: saldoAkhir,
+        status: 'LUNAS'
+      }
+    }, { saveAndReset: false, onSuccessMessage: `Struk pembayaran #LT-${rec.id} berhasil dicetak!` });
+
+    // Jalankan konfirmasi pelunasan dan pengiriman WhatsApp jika cetak tidak dibatalkan
+    if (printed !== false) {
+      await handleExecutePayment();
+    }
   };
 
   return (
@@ -1992,11 +2177,20 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                             setLoadedArrivalDate(record.tanggalDatang || record.time || null);
                             setActiveTab('current');
                           }}
-                          className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5"
+                          className="py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5"
                           title="Buka & Edit Nota (Tanggal Masuk Tetap Terkunci)"
                         >
                           <FileText size={12} className="text-slate-500" />
                           <span>Buka</span>
+                        </button>
+
+                        <button 
+                          onClick={() => handlePrintRecord(record)}
+                          className="py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5"
+                          title="Cetak Ulang Struk Thermal Bluetooth (Mencatat Pembayaran & Saldo)"
+                        >
+                          <Printer size={12} className="text-slate-600" />
+                          <span>Cetak</span>
                         </button>
 
                         <button 
@@ -2816,24 +3010,49 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                   </div>
                 )}
 
-                {/* Tombol Batal & Konfirmasi */}
-                <div className="flex gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentModal(prev => ({ ...prev, visible: false }))}
-                    className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-colors btn-press"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!isCukup || isSendingWA}
-                    onClick={handleExecutePayment}
-                    className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider shadow-lg shadow-emerald-600/20 disabled:opacity-40 transition-all btn-press flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle2 size={16} />
-                    <span>{isSendingWA ? 'Memproses...' : 'Konfirmasi & Kirim WA'}</span>
-                  </button>
+                {/* Tombol Cetak & Konfirmasi */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={!isCukup}
+                      onClick={handlePrintFromModal}
+                      className="flex-1 py-3 px-2 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all btn-press disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-sm"
+                      title="Cetak Struk Thermal Bluetooth (Mencatat Pembayaran & Saldo)"
+                    >
+                      <Printer size={15} />
+                      <span>Cetak Struk Saja</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!isCukup || isSendingWA}
+                      onClick={handlePrintAndConfirmPayment}
+                      className="flex-1 py-3 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all btn-press disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20"
+                      title="Cetak Struk Sekaligus Konfirmasi Lunas & Kirim WhatsApp"
+                    >
+                      <Printer size={15} />
+                      <span>Cetak & Konfirmasi</span>
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentModal(prev => ({ ...prev, visible: false }))}
+                      className="w-24 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-colors btn-press shrink-0"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!isCukup || isSendingWA}
+                      onClick={handleExecutePayment}
+                      className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider shadow-lg shadow-emerald-600/20 disabled:opacity-40 transition-all btn-press flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>{isSendingWA ? 'Memproses...' : 'Konfirmasi & Kirim WA'}</span>
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
