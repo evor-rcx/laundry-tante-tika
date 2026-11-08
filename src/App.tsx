@@ -1699,115 +1699,138 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
   };
 
   return (
-    <div className="min-h-screen pb-40 bg-slate-50 relative z-0">
-      <header className="p-6 max-w-md mx-auto flex justify-between items-center bg-white/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 p-1 overflow-hidden">
-            <img src={LOGO_URL} className="w-full h-full object-contain" alt="Logo" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Owner Panel</h1>
-              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+    <div className="min-h-screen pb-36 bg-slate-100/60 relative z-0 selection:bg-teal-500 selection:text-white">
+      {/* Header Kasir Butik */}
+      <header className="glass-header sticky top-0 z-50">
+        <div className="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-xl shadow-xs border border-slate-200/80 p-1 overflow-hidden shrink-0">
+              <img src={LOGO_URL} className="w-full h-full object-contain" alt="Logo Laundry Tante Tika" />
             </div>
-            <p className="text-sm font-bold text-slate-800 leading-none">Laundry Tante Tika</p>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">POS Kasir</span>
+                <span className="text-slate-300">·</span>
+                <span className={`text-[10px] font-semibold flex items-center gap-1 ${isOnline ? 'text-teal-700' : 'text-rose-600'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-teal-500' : 'bg-rose-500'}`} />
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              <h1 className="text-sm font-extrabold tracking-tight text-slate-900 leading-none mt-0.5">Laundry Tante Tika</h1>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setShowBotModal(true);
-              if (waBotConfig.ip.trim()) {
-                checkBotConnection(waBotConfig.ip);
-              }
-            }}
-            className={`h-10 px-3 rounded-full flex items-center gap-1.5 shadow-sm border btn-press text-[10px] font-black uppercase tracking-wider transition-all ${
-              waBotConfig.enabled
-                ? 'bg-emerald-500 text-white border-emerald-500 shadow-emerald-500/20'
-                : 'bg-white text-slate-500 border-slate-100 hover:bg-slate-50'
-            }`}
-            title="Pengaturan Bot WA WiFi STB"
-          >
-            <Wifi size={15} strokeWidth={2.5} />
-            <span>{waBotConfig.enabled ? 'Bot ON' : 'Bot WA'}</span>
-          </button>
-          <button 
-            onClick={() => {
-              setConfirmModal({
-                title: 'Transaksi Baru',
-                message: 'Buat transaksi baru? Semua data input saat ini akan dibersihkan.',
-                visible: true,
-                onConfirm: () => {
-                  setCart([]);
-                  setCustomer({
-                    name: '',
-                    phone: '',
-                    address: '',
-                    status: 'BELUM LUNAS',
-                    delivery: 'AMBIL SENDIRI'
-                  });
-                  setNotaId(Math.floor(1000 + Math.random() * 9000));
-                  setLoadedArrivalDate(null);
-                  setConfirmModal(prev => ({ ...prev, visible: false }));
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                setShowBotModal(true);
+                if (waBotConfig.ip.trim()) {
+                  checkBotConnection(waBotConfig.ip);
                 }
-              });
-            }}
-            className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 btn-press text-blue-500 hover:bg-blue-50"
-            title="Transaksi Baru"
-          >
-            <Plus size={18} strokeWidth={2.5} />
-          </button>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 btn-press text-slate-400 hover:text-blue-600"
-          >
-            <RotateCcw size={18} strokeWidth={2.5} />
-          </button>
+              }}
+              className={`h-9 px-3 rounded-lg flex items-center gap-1.5 border btn-press text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                waBotConfig.enabled
+                  ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+              title="Pengaturan Bot WA WiFi STB"
+            >
+              <Wifi size={14} strokeWidth={2.5} />
+              <span>{waBotConfig.enabled ? 'Bot ON' : 'Bot WA'}</span>
+            </button>
+            <button 
+              onClick={() => {
+                setConfirmModal({
+                  title: 'Transaksi Baru',
+                  message: 'Buat transaksi baru? Semua data input saat ini akan dibersihkan.',
+                  visible: true,
+                  onConfirm: () => {
+                    setCart([]);
+                    setCustomer({
+                      name: '',
+                      phone: '',
+                      address: '',
+                      status: 'BELUM LUNAS',
+                      delivery: 'AMBIL SENDIRI'
+                    });
+                    setNotaId(Math.floor(1000 + Math.random() * 9000));
+                    setLoadedArrivalDate(null);
+                    setConfirmModal(prev => ({ ...prev, visible: false }));
+                  }
+                });
+              }}
+              className="w-9 h-9 bg-white text-slate-700 hover:text-teal-700 rounded-lg flex items-center justify-center border border-slate-200 btn-press shadow-xs"
+              title="Transaksi Baru"
+            >
+              <Plus size={16} strokeWidth={2.5} />
+            </button>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-9 h-9 bg-white text-slate-400 hover:text-slate-700 rounded-lg flex items-center justify-center border border-slate-200 btn-press shadow-xs"
+              title="Muat Ulang"
+            >
+              <RotateCcw size={15} strokeWidth={2.2} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="max-w-md mx-auto px-6 mb-4">
-        <div className="bg-slate-100 p-1 rounded-2xl flex">
+      {/* Segmented Control Tab */}
+      <div className="max-w-md mx-auto px-4 mt-3">
+        <div className="bg-slate-200/70 p-1 rounded-xl flex gap-1 border border-slate-200">
           <button 
             onClick={() => setActiveTab('current')}
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'current' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}
+            className={`flex-1 py-2 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all btn-press ${
+              activeTab === 'current' 
+                ? 'bg-white text-slate-900 shadow-xs' 
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
           >
-            {loadedArrivalDate ? `Edit #LT-${notaId}` : 'Nota Baru'}
+            {loadedArrivalDate ? `Edit Nota #LT-${notaId}` : 'Nota Baru'}
           </button>
           <button 
             onClick={() => setActiveTab('history')}
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}
+            className={`flex-1 py-2 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 btn-press ${
+              activeTab === 'history' 
+                ? 'bg-white text-slate-900 shadow-xs' 
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
           >
-            Riwayat ({history.length})
+            <span>Riwayat</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
+              activeTab === 'history' ? 'bg-slate-100 text-slate-800' : 'bg-slate-300/70 text-slate-700'
+            }`}>
+              {history.length}
+            </span>
           </button>
         </div>
       </div>
 
-      <main className="max-w-md mx-auto p-4 space-y-6">
+      <main className="max-w-md mx-auto p-4 space-y-4">
         <AnimatePresence mode="wait">
           {activeTab === 'current' ? (
             <motion.div
               key="form"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
+              exit={{ opacity: 0, y: -12 }}
+              className="space-y-4"
             >
               {/* Banner Mode Edit Nota (Tanggal Masuk Terkunci & Aman) */}
               {loadedArrivalDate && (
-                <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                <div className="bg-amber-50/90 border border-amber-200/80 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-center gap-2.5">
-                    <Clock size={16} className="text-amber-600 shrink-0" />
+                    <Clock size={16} className="text-amber-700 shrink-0" />
                     <div className="text-[10px] text-amber-950 leading-tight">
-                      <p className="font-black uppercase tracking-wide">Edit Transaksi #LT-{notaId}</p>
-                      <p className="text-[9px] text-amber-700 mt-0.5">
-                        Tgl Masuk Terkunci: <strong>{loadedArrivalDate}</strong> (Tidak berubah)
+                      <p className="font-extrabold uppercase tracking-wide">Edit Transaksi #LT-{notaId}</p>
+                      <p className="text-[10px] text-amber-800 mt-0.5">
+                        Tgl Masuk Terkunci: <strong className="font-mono">{loadedArrivalDate}</strong>
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => resetForm()}
-                    className="px-3 py-1.5 bg-white hover:bg-amber-100/80 active:bg-amber-200 text-amber-900 rounded-xl text-[9px] font-black uppercase tracking-wider border border-amber-200/80 shadow-xs transition-colors shrink-0"
+                    className="px-2.5 py-1.5 bg-white hover:bg-amber-100 active:bg-amber-200 text-amber-900 rounded-lg text-[9px] font-bold uppercase tracking-wider border border-amber-200 shadow-xs btn-press shrink-0"
                     title="Batal edit dan buat nota transaksi baru"
                   >
                     Batal Edit
@@ -1816,37 +1839,42 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
               )}
 
               {/* Data Pelanggan */}
-              <section className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <User size={14} className="text-slate-400" />
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Pelanggan</h3>
-                </div>
-                <div className="space-y-3">
-                  <button onClick={() => setShowCustomerList(true)} className="w-full py-3 bg-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center justify-center gap-2">
-                    <User size={12} /> Pilih Pelanggan ({savedCustomers.length})
+              <section className="card-pos p-5 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <User size={15} className="text-teal-600" />
+                    <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Data Pelanggan</h2>
+                  </div>
+                  <button 
+                    onClick={() => setShowCustomerList(true)} 
+                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 btn-press transition-colors"
+                  >
+                    <span>Daftar Pelanggan ({savedCustomers.length})</span>
                   </button>
+                </div>
 
+                <div className="space-y-2.5">
                   {/* Deteksi Saldo Simpanan Pelanggan Otomatis */}
                   {(() => {
                     const custBal = getCustomerBalance(customer.name, customer.phone);
                     if (custBal > 0) {
                       return (
-                        <div className="bg-emerald-50 border border-emerald-200/90 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                        <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
-                              <Wallet size={16} />
+                            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                              <Wallet size={15} />
                             </div>
-                            <div className="text-[10px] leading-tight">
-                              <p className="font-black uppercase tracking-wide text-emerald-950">
-                                Saldo Tersedia: Rp {custBal.toLocaleString('id-ID')}
+                            <div className="text-[11px] leading-tight">
+                              <p className="font-bold uppercase tracking-wide text-emerald-950">
+                                Saldo Tersimpan: <span className="font-mono font-extrabold text-emerald-700">Rp {custBal.toLocaleString('id-ID')}</span>
                               </p>
-                              <p className="text-[9px] text-emerald-700 mt-0.5">
-                                Pelanggan memiliki deposit uang lebih. Otomatis dapat digunakan saat pelunasan tagihan.
+                              <p className="text-[10px] text-emerald-800 mt-0.5">
+                                Otomatis dapat digunakan untuk memotong tagihan saat pelunasan.
                               </p>
                             </div>
                           </div>
-                          <span className="px-2.5 py-1 bg-white text-emerald-800 rounded-lg text-[9px] font-black uppercase tracking-wider border border-emerald-200 shrink-0">
-                            Tersedia
+                          <span className="px-2 py-0.5 bg-white text-emerald-800 rounded text-[9px] font-bold uppercase tracking-wider border border-emerald-200 shrink-0">
+                            Aktif
                           </span>
                         </div>
                       );
@@ -1854,157 +1882,187 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                     return null;
                   })()}
 
-                  <input 
-                    type="text" 
-                    placeholder="NAMA PELANGGAN" 
-                    value={customer.name}
-                    onChange={e => setCustomer({ ...customer, name: e.target.value })}
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs uppercase placeholder:text-slate-300"
-                  />
-                  <input 
-                    type="tel" 
-                    placeholder="NOMOR WHATSAPP (CONTOH: 0812...)" 
-                    value={customer.phone}
-                    onChange={e => setCustomer({ ...customer, phone: e.target.value })}
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs placeholder:text-slate-300"
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="ALAMAT" 
-                    value={customer.address}
-                    onChange={e => setCustomer({ ...customer, address: e.target.value })}
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs uppercase placeholder:text-slate-300"
-                  />
+                  <div className="space-y-2">
+                    <input 
+                      type="text" 
+                      placeholder="NAMA PELANGGAN" 
+                      value={customer.name}
+                      onChange={e => setCustomer({ ...customer, name: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none font-bold text-xs uppercase text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-teal-600 transition-colors"
+                    />
+                    <input 
+                      type="tel" 
+                      placeholder="NOMOR WHATSAPP (0812...)" 
+                      value={customer.phone}
+                      onChange={e => setCustomer({ ...customer, phone: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none font-bold text-xs text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-teal-600 transition-colors font-mono"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="ALAMAT PENGANTARAN" 
+                      value={customer.address}
+                      onChange={e => setCustomer({ ...customer, address: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none font-bold text-xs uppercase text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-teal-600 transition-colors"
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <select 
-                    value={customer.status}
-                    onChange={e => setCustomer({ ...customer, status: e.target.value as any })}
-                    className="p-4 bg-slate-50 border-none rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer"
-                  >
-                    <option value="BELUM LUNAS">🔴 BELUM LUNAS</option>
-                    <option value="LUNAS">🟢 LUNAS</option>
-                  </select>
-                  <select 
-                    value={customer.delivery}
-                    onChange={e => setCustomer({ ...customer, delivery: e.target.value as any })}
-                    className="p-4 bg-slate-50 border-none rounded-2xl text-[10px] font-black uppercase outline-none cursor-pointer"
-                  >
-                    <option value="AMBIL SENDIRI">🏠 AMBIL SENDIRI</option>
-                    <option value="ANTAR JEMPUT">🛵 ANTAR JEMPUT</option>
-                  </select>
+
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status Nota</label>
+                    <select 
+                      value={customer.status}
+                      onChange={e => setCustomer({ ...customer, status: e.target.value as any })}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 uppercase outline-none cursor-pointer focus:bg-white focus:border-teal-600"
+                    >
+                      <option value="BELUM LUNAS">🔴 Belum Lunas</option>
+                      <option value="LUNAS">🟢 Lunas</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Metode Pengiriman</label>
+                    <select 
+                      value={customer.delivery}
+                      onChange={e => setCustomer({ ...customer, delivery: e.target.value as any })}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 uppercase outline-none cursor-pointer focus:bg-white focus:border-teal-600"
+                    >
+                      <option value="AMBIL SENDIRI">🏠 Ambil Sendiri</option>
+                      <option value="ANTAR JEMPUT">🛵 Antar Jemput</option>
+                    </select>
+                  </div>
                 </div>
               </section>
 
               {/* Input Layanan */}
-              <section className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 size={14} className="text-slate-400" />
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pilih Layanan</h3>
+              <section className="card-pos p-5 space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                  <CheckCircle2 size={15} className="text-teal-600" />
+                  <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Pilih Layanan Laundry</h2>
                 </div>
-                <button 
-                  onClick={() => setShowServiceModal(true)}
-                  className="w-full p-4 bg-slate-900 text-white border-none rounded-2xl font-bold uppercase text-[11px] outline-none flex justify-between items-center transition-all btn-press"
-                >
-                  <span className="flex-1 text-left truncate pr-4">
-                    {selectedServiceIndex === -1
-                      ? '-- PILIH LAYANAN --'
-                      : flatServices[selectedServiceIndex].name}
-                  </span>
-                  <ChevronDown size={16} className="text-slate-400 shrink-0" />
-                </button>
-                <div className="flex gap-3">
-                  <input 
-                    type="number"
-                    step="any" 
-                    placeholder="JUMLAH" 
-                    value={inputQty}
-                    onChange={e => setInputQty(e.target.value)}
-                    className="flex-1 p-4 bg-slate-50 border-none rounded-2xl outline-none font-bold text-xs text-center placeholder:text-slate-300"
-                  />
-                  <div className="px-6 flex items-center justify-center bg-slate-100 rounded-2xl font-black text-[10px] text-slate-400 uppercase min-w-[80px]">
-                    {selectedServiceIndex !== -1 ? flatServices[selectedServiceIndex].unit : 'UNIT'}
+
+                <div className="space-y-2.5">
+                  <button 
+                    onClick={() => setShowServiceModal(true)}
+                    className="w-full px-4 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs outline-none flex justify-between items-center transition-all btn-press shadow-xs hover:bg-slate-800"
+                  >
+                    <span className="flex-1 text-left truncate pr-3">
+                      {selectedServiceIndex === -1
+                        ? '-- PILIH LAYANAN --'
+                        : flatServices[selectedServiceIndex].name}
+                    </span>
+                    <ChevronDown size={16} className="text-slate-400 shrink-0" />
+                  </button>
+
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input 
+                        type="number"
+                        step="any" 
+                        placeholder="Jumlah / Timbangan" 
+                        value={inputQty}
+                        onChange={e => setInputQty(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none font-bold text-xs text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-teal-600 transition-colors font-mono"
+                      />
+                    </div>
+                    <div className="px-4 flex items-center justify-center bg-slate-100 border border-slate-200 rounded-lg font-bold text-xs text-slate-600 uppercase min-w-[70px] font-mono">
+                      {selectedServiceIndex !== -1 ? flatServices[selectedServiceIndex].unit : 'UNIT'}
+                    </div>
                   </div>
+
+                  <button 
+                    onClick={addItem}
+                    className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider btn-press shadow-sm flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Plus size={15} strokeWidth={2.5} />
+                    <span>Tambah ke Keranjang Nota</span>
+                  </button>
                 </div>
-                <button 
-                  onClick={addItem}
-                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest btn-press shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
-                >
-                  <Plus size={14} /> TAMBAH LAYANAN KE NOTA
-                </button>
               </section>
 
-              {/* Preview Nota */}
+              {/* Preview Nota (Artisanal Boutique POS Receipt) */}
               <motion.div 
                 layout
-                className="nota-container overflow-hidden mx-auto max-w-sm bg-white rounded-3xl border border-slate-200 shadow-sm"
+                className="overflow-hidden mx-auto max-w-sm bg-white rounded-2xl border border-slate-300/80 shadow-md"
                 id="notaBox"
               >
-                <div className="p-8 text-center relative bg-[#fdfbf7]">
-                  <div className="absolute top-4 right-6 font-black text-[10px] text-orange-800 bg-orange-100 px-3 py-1 rounded-full">
-                    #LT-{notaId}
+                {/* Header Nota */}
+                <div className="p-6 text-center border-b border-dashed border-slate-200 bg-slate-50/50">
+                  <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono pb-2 border-b border-slate-100 mb-3">
+                    <span className="font-bold text-slate-900 tracking-wider">#LT-{notaId}</span>
+                    <span>{loadedArrivalDate || currentTime}</span>
                   </div>
-                  <img src={LOGO_URL} className="w-16 h-16 mx-auto mb-3 object-contain" alt="Logo" />
-                  <h2 className="text-lg font-black text-slate-800 uppercase leading-none">Laundry Tante Tika</h2>
-                  <div className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-2 space-y-0.5">
+                  <img src={LOGO_URL} className="w-14 h-14 mx-auto mb-2 object-contain" alt="Logo" />
+                  <h3 className="text-base font-extrabold text-slate-900 uppercase tracking-tight">Laundry Tante Tika</h3>
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider mt-1 space-y-0.5">
                     <p>Jl. Zamrud Depan Gg. Zamrud 2 RT 42</p>
                     <p>Bontang Selatan, Bontang</p>
                   </div>
                 </div>
 
-                <div className="px-6 pb-8 space-y-5 bg-white">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Pelanggan</p>
-                      <p className="text-xs font-black text-slate-800 uppercase">{customer.name || '-'}</p>
-                      <div className="flex items-center gap-1">
-                         <MapPin size={8} className="text-slate-400" />
-                         <p className="text-[8px] font-bold text-slate-400 uppercase italic">{customer.address || '-'}</p>
-                      </div>
+                <div className="p-5 space-y-4">
+                  {/* Metadata Pelanggan Unboxed */}
+                  <div className="flex justify-between items-start gap-3 pb-3 border-b border-slate-100">
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Pelanggan</span>
+                      <p className="text-xs font-bold text-slate-900 uppercase tracking-tight">{customer.name || 'PELANGGAN UMUM'}</p>
+                      {customer.address && (
+                        <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                          <MapPin size={10} className="text-slate-400 shrink-0" />
+                          <span className="truncate max-w-[200px]">{customer.address}</span>
+                        </p>
+                      )}
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${
-                      customer.status === 'LUNAS' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'
-                    }`}>
-                      {customer.status}
+                    <div className="text-right">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Status</span>
+                      <span className={`text-[11px] font-bold uppercase ${
+                        customer.status === 'LUNAS' ? 'text-teal-700' : 'text-rose-600'
+                      }`}>
+                        {customer.status}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="border-t border-dashed border-slate-200 pt-5 space-y-3">
+                  {/* Daftar Item Layanan */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1">
+                      <span>Layanan</span>
+                      <span>Subtotal</span>
+                    </div>
                     <AnimatePresence initial={false}>
                       {cart.length === 0 ? (
                         <motion.p 
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          className="text-[9px] text-center text-slate-300 italic py-2"
+                          className="text-[10px] text-center text-slate-400 italic py-3"
                         >
-                          Belum ada layanan yang ditambahkan
+                          Belum ada item layanan
                         </motion.p>
                       ) : (
                         cart.map((item, idx) => (
                           <motion.div 
                             key={idx}
-                            initial={{ opacity: 0, x: -10 }}
+                            initial={{ opacity: 0, x: -8 }}
                             animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="flex justify-between items-center group"
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="flex justify-between items-start text-xs group pt-1"
                           >
-                            <div className="space-y-0.5 pr-2">
-                              <div className="flex items-center gap-2">
+                            <div className="pr-2 space-y-0.5">
+                              <div className="flex items-center gap-1.5">
                                 <button 
                                   onClick={() => removeItem(idx)}
-                                  className="text-red-400 hover:text-red-600 transition-colors p-0.5"
+                                  className="text-slate-300 hover:text-rose-600 transition-colors p-0.5"
                                   title="Hapus"
                                 >
-                                  <Trash2 size={10} />
+                                  <Trash2 size={11} />
                                 </button>
-                                <p className="text-[10px] font-black text-slate-700 uppercase">{item.name}</p>
+                                <span className="font-bold text-slate-800 uppercase text-[11px]">{item.name}</span>
                               </div>
-                              <p className="text-[8px] font-bold text-slate-400 ml-5 font-mono">
-                                {item.qty} {item.unit.toUpperCase()} x Rp {item.price.toLocaleString()}
+                              <p className="text-[10px] text-slate-400 font-mono ml-4">
+                                {item.qty} {item.unit} × Rp {item.price.toLocaleString('id-ID')}
                               </p>
                             </div>
-                            <span className="text-[10px] font-black text-slate-800 shrink-0 font-mono">
-                              Rp {item.subtotal.toLocaleString()}
+                            <span className="font-bold text-slate-900 font-mono shrink-0 text-[11px]">
+                              Rp {item.subtotal.toLocaleString('id-ID')}
                             </span>
                           </motion.div>
                         ))
@@ -2012,28 +2070,34 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                     </AnimatePresence>
                   </div>
 
-                  <div className="flex justify-between items-center px-1">
-                    <p className="text-[8px] font-black text-slate-300 uppercase">Metode Pengambilan</p>
-                    <p className="text-[9px] font-bold text-blue-600 uppercase font-mono">{customer.delivery}</p>
+                  {/* Total Tagihan Panel */}
+                  <div className="pt-2 border-t border-dashed border-slate-200">
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 pb-1">
+                      <span>Metode Pengambilan</span>
+                      <span className="font-bold text-slate-800 uppercase">{customer.delivery}</span>
+                    </div>
+
+                    <div className="bg-slate-900 text-white rounded-xl p-3.5 flex justify-between items-center mt-2">
+                      <div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Tagihan</span>
+                        <span className="text-xl font-extrabold font-mono tracking-tight text-white">
+                          Rp {total.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <Clock size={12} className="ml-auto text-slate-400 mb-0.5" />
+                        <span className="text-[9px] text-slate-400 font-mono block">
+                          {formatReceiptDateOnly(loadedArrivalDate || currentTime)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="bg-slate-900 rounded-[1.75rem] p-5 text-white flex justify-between items-center shadow-xl shadow-slate-200">
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Tagihan</p>
-                      <p className="text-lg font-black font-mono">Rp {total.toLocaleString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <Clock size={10} className="ml-auto text-slate-400 mb-1" />
-                      <p className="text-[7px] font-bold text-slate-400 uppercase leading-relaxed font-mono">
-                        {loadedArrivalDate || currentTime}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col gap-1.5 pt-1">
-                    <p className="text-center text-[8px] font-black text-slate-300 tracking-[0.2em] uppercase">Pakaian Bersih Hati Senang</p>
-                    <div className="bg-orange-50/80 border border-orange-200/70 py-2 px-3 rounded-xl text-center shadow-xs">
-                      <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest">{upcomingEventText}</p>
+                  {/* Slogan & Footer */}
+                  <div className="text-center pt-2 space-y-1">
+                    <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">Pakaian Bersih · Hati Senang</p>
+                    <div className="bg-amber-50/70 border border-amber-200/60 py-1.5 px-3 rounded-md text-center">
+                      <p className="text-[9px] font-bold text-amber-900 uppercase tracking-wide">{upcomingEventText}</p>
                     </div>
                   </div>
                 </div>
@@ -2042,13 +2106,15 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
           ) : (
             <motion.div
               key="history"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-4"
+              exit={{ opacity: 0, y: -12 }}
+              className="space-y-3"
             >
-              <div className="flex items-center justify-between px-2">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">50 Transaksi Terakhir</h3>
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  50 Transaksi Terakhir
+                </span>
                 <button 
                   onClick={() => {
                     setConfirmModal({
@@ -2061,14 +2127,15 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                       }
                     });
                   }}
-                  className="text-[10px] font-bold text-red-500 uppercase"
+                  className="text-[10px] font-bold text-rose-600 hover:text-rose-700 uppercase tracking-wider btn-press"
                 >
                   Hapus Semua
                 </button>
               </div>
+
               {history.length === 0 ? (
-                <div className="bg-white rounded-[2.5rem] p-12 text-center border border-slate-100 border-dashed">
-                  <p className="text-slate-300 text-xs font-medium">Belum ada riwayat transaksi</p>
+                <div className="card-pos p-10 text-center border-dashed">
+                  <p className="text-slate-400 text-xs font-medium">Belum ada riwayat transaksi</p>
                 </div>
               ) : (
                 history.map((record, idx) => {
@@ -2077,96 +2144,104 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                   return (
                     <div 
                       key={`${record.id}-${idx}`} 
-                      className="bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm space-y-3.5 transition-all hover:border-slate-200"
+                      className="card-pos p-4 space-y-3 transition-colors hover:border-slate-300"
                     >
-                      <div className="flex justify-between items-start gap-2">
+                      <div className="flex justify-between items-start gap-3">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-black text-slate-800 tracking-wide">#LT-{record.id}</span>
-                            <span className={`text-[8px] font-black px-2.5 py-0.5 rounded-full ${isLunas ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60' : 'bg-rose-50 text-rose-600 border border-rose-200/60'}`}>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-slate-900 font-mono tracking-tight">#LT-{record.id}</span>
+                            <span className="text-slate-300">·</span>
+                            <span className={`text-[10px] font-bold uppercase ${isLunas ? 'text-teal-700' : 'text-rose-600'}`}>
                               {record.customer?.status || 'BELUM LUNAS'}
                             </span>
                             {record.customer?.delivery && (
-                              <span className="text-[8px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                                {record.customer.delivery}
-                              </span>
+                              <>
+                                <span className="text-slate-300">·</span>
+                                <span className="text-[10px] text-slate-500 font-medium">
+                                  {record.customer.delivery}
+                                </span>
+                              </>
                             )}
                           </div>
-                          <p className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+
+                          <p className="text-xs font-extrabold text-slate-900 uppercase tracking-tight">
                             {record.customer?.name?.trim() ? record.customer.name.toUpperCase() : 'PELANGGAN'}
                           </p>
+
                           {record.customer?.phone && (
-                            <p className="text-[9px] font-medium text-slate-400 flex items-center gap-1.5">
+                            <p className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
                               <Phone size={10} className="text-slate-400" />
                               <span>{record.customer.phone}</span>
                             </p>
                           )}
                           
-                          {/* Tiga Pencatatan Tanggal: Masuk, Pengantaran, Bayar */}
-                          <div className="space-y-1 pt-1.5 border-t border-slate-100">
-                            <p className="text-[8px] font-medium text-slate-600 flex items-center gap-1.5">
-                              <Clock size={10} className="text-blue-500 shrink-0" />
-                              <span><strong className="font-semibold text-slate-800">Tgl Masuk:</strong> {record.tanggalDatang || record.time || '-'}</span>
+                          {/* Pencatatan Tiga Tanggal (Masuk, Pengantaran, Bayar) */}
+                          <div className="space-y-0.5 pt-1.5 border-t border-slate-100 text-[10px]">
+                            <p className="text-slate-600 flex items-center gap-1.5">
+                              <Clock size={11} className="text-teal-600 shrink-0" />
+                              <span><strong className="text-slate-800 font-semibold">Tgl Masuk:</strong> <span className="font-mono">{record.tanggalDatang || record.time || '-'}</span></span>
                             </p>
                             {record.tanggalAntar && (
-                              <p className="text-[8px] font-medium text-amber-700 flex items-center gap-1.5">
-                                <Truck size={10} className="text-amber-500 shrink-0" />
-                                <span><strong className="font-semibold text-amber-800">Tgl Pengantaran:</strong> {record.tanggalAntar}</span>
+                              <p className="text-amber-800 flex items-center gap-1.5">
+                                <Truck size={11} className="text-amber-600 shrink-0" />
+                                <span><strong className="text-amber-900 font-semibold">Tgl Antar:</strong> <span className="font-mono">{record.tanggalAntar}</span></span>
                               </p>
                             )}
                             {record.tanggalBayar && (
                               <div className="space-y-0.5">
-                                <p className="text-[8px] font-medium text-emerald-700 flex items-center gap-1.5">
-                                  <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
-                                  <span><strong className="font-semibold text-emerald-800">Tgl Bayar:</strong> {record.tanggalBayar}</span>
+                                <p className="text-teal-800 flex items-center gap-1.5">
+                                  <CheckCircle2 size={11} className="text-teal-600 shrink-0" />
+                                  <span><strong className="text-teal-950 font-semibold">Tgl Bayar:</strong> <span className="font-mono">{record.tanggalBayar}</span></span>
                                 </p>
                                 {record.metodeBayar && (
-                                  <p className="text-[8px] font-semibold text-slate-600 ml-4">
-                                    Via: <span className="text-emerald-700">{record.metodeBayar === 'TRANSFER' ? 'Transfer (TF)' : 'Cash (Tunai)'}</span>
-                                    {record.uangDiterima > 0 && ` • Diterima: Rp ${record.uangDiterima.toLocaleString('id-ID')}`}
-                                    {record.kembalian > 0 && ` • Pengangsulan: Rp ${record.kembalian.toLocaleString('id-ID')}`}
-                                    {record.saldoTerpakai > 0 && ` • Pakai Saldo: Rp ${record.saldoTerpakai.toLocaleString('id-ID')}`}
+                                  <p className="text-[9px] text-slate-500 ml-4 font-mono">
+                                    Via {record.metodeBayar === 'TRANSFER' ? 'Transfer' : 'Cash'}
+                                    {record.uangDiterima > 0 && ` · Bayar: Rp ${record.uangDiterima.toLocaleString('id-ID')}`}
+                                    {record.kembalian > 0 && ` · Angsul: Rp ${record.kembalian.toLocaleString('id-ID')}`}
+                                    {record.saldoTerpakai > 0 && ` · Saldo: Rp ${record.saldoTerpakai.toLocaleString('id-ID')}`}
                                   </p>
                                 )}
                               </div>
                             )}
                           </div>
                         </div>
+
                         <div className="text-right shrink-0">
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Total Tagihan</span>
-                          <p className="text-sm font-black text-slate-900 font-mono">Rp {record.total.toLocaleString()}</p>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Tagihan</span>
+                          <span className="text-sm font-extrabold text-slate-900 font-mono">Rp {record.total.toLocaleString('id-ID')}</span>
                         </div>
                       </div>
 
                       {items.length > 0 && (
-                        <div className="bg-slate-50/90 rounded-2xl p-3 border border-slate-100 text-[10px] space-y-1.5">
-                          <div className="flex items-center justify-between text-[8px] font-black text-slate-400 uppercase tracking-wider">
-                            <span>Layanan Terdaftar ({items.length})</span>
+                        <div className="bg-slate-50/80 rounded-lg p-2.5 border border-slate-100 text-[10px] space-y-1">
+                          <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                            <span>Layanan ({items.length})</span>
                           </div>
-                          <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                          <div className="space-y-0.5 max-h-20 overflow-y-auto pr-1 font-mono">
                             {items.map((it: any, itIdx: number) => (
-                              <div key={itIdx} className="flex justify-between items-center text-slate-600 font-medium">
-                                <span className="truncate pr-2">• {it.name} ({it.qty} {it.unit})</span>
-                                <span className="font-bold text-slate-800 shrink-0 font-mono">Rp {(it.price * it.qty).toLocaleString()}</span>
+                              <div key={itIdx} className="flex justify-between items-center text-slate-600">
+                                <span className="truncate pr-2 font-sans font-medium">• {it.name} ({it.qty} {it.unit})</span>
+                                <span className="font-bold text-slate-800 shrink-0">Rp {(it.price * it.qty).toLocaleString('id-ID')}</span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      <div className="pt-1 flex gap-2 items-center">
+                      {/* Tombol Aksi Kasir */}
+                      <div className="pt-1 flex gap-1.5 items-center">
                         <button 
                           onClick={() => openPaymentModal(record, idx)}
-                          className={`flex-1 py-3 px-3 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all ${
+                          className={`flex-1 py-2 px-2.5 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs btn-press transition-colors ${
                             isLunas 
-                              ? 'bg-emerald-700 hover:bg-emerald-800 shadow-emerald-700/20' 
-                              : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                              ? 'bg-slate-800 hover:bg-slate-900' 
+                              : 'bg-teal-600 hover:bg-teal-700'
                           }`}
                           title="Input Pembayaran & Hitung Pengangsulan"
                         >
-                          <CheckCircle2 size={14} className="text-emerald-200" />
-                          <span>{isLunas ? 'Lunas (Kirim Bukti WA)' : 'Konfirmasi / Lunas'}</span>
-                          <MessageCircle size={13} className="text-emerald-200" />
+                          <CheckCircle2 size={13} className={isLunas ? 'text-slate-300' : 'text-teal-200'} />
+                          <span>{isLunas ? 'Lunas (Kirim WA)' : 'Konfirmasi / Lunas'}</span>
+                          <MessageCircle size={12} className={isLunas ? 'text-slate-300' : 'text-teal-200'} />
                         </button>
 
                         <button 
@@ -2177,8 +2252,8 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                             setLoadedArrivalDate(record.tanggalDatang || record.time || null);
                             setActiveTab('current');
                           }}
-                          className="py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5"
-                          title="Buka & Edit Nota (Tanggal Masuk Tetap Terkunci)"
+                          className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors btn-press flex items-center gap-1"
+                          title="Buka & Edit Nota"
                         >
                           <FileText size={12} className="text-slate-500" />
                           <span>Buka</span>
@@ -2186,10 +2261,10 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
 
                         <button 
                           onClick={() => handlePrintRecord(record)}
-                          className="py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5"
-                          title="Cetak Ulang Struk Thermal Bluetooth (Mencatat Pembayaran & Saldo)"
+                          className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors btn-press flex items-center gap-1"
+                          title="Cetak Ulang Struk Thermal Bluetooth"
                         >
-                          <Printer size={12} className="text-slate-600" />
+                          <Printer size={12} className="text-slate-500" />
                           <span>Cetak</span>
                         </button>
 
@@ -2205,7 +2280,7 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                               }
                             });
                           }} 
-                          className="py-3 px-3 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all active:scale-95"
+                          className="py-2 px-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors btn-press"
                           title="Hapus"
                         >
                           <Trash2 size={13} />
@@ -2220,33 +2295,33 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
         </AnimatePresence>
       </main>
 
-      {/* Nav Bawah */}
-      <footer className="fixed bottom-0 left-0 right-0 p-5 z-[100] glass-nav">
-        <div className="max-w-md mx-auto flex items-center gap-2 sm:gap-2.5">
+      {/* Nav Bawah Ergonomis */}
+      <footer className="fixed bottom-0 left-0 right-0 p-3 z-[100] glass-nav">
+        <div className="max-w-md mx-auto flex items-center gap-2">
           <button 
             onClick={handlePrint}
-            className="w-14 h-16 bg-white/10 text-white rounded-full flex items-center justify-center btn-press border border-white/20 hover:bg-white/20 shrink-0"
+            className="w-12 h-12 bg-white/10 text-white rounded-xl flex items-center justify-center btn-press border border-white/20 hover:bg-white/20 shrink-0"
             title="Cetak Nota Termal"
           >
-            <Printer size={22} />
+            <Printer size={18} />
           </button>
           <button 
             onClick={handleSaveOnly}
             disabled={cart.length === 0}
-            className="w-16 h-16 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex flex-col items-center justify-center btn-press border border-blue-400/40 shadow-lg shadow-blue-600/25 disabled:opacity-40 shrink-0 transition-all active:scale-95"
+            className="w-14 h-12 bg-slate-800 hover:bg-slate-700 text-white rounded-xl flex flex-col items-center justify-center btn-press border border-slate-700 shadow-xs disabled:opacity-40 shrink-0 transition-colors"
             title="Simpan Transaksi ke Riwayat"
           >
-            <Save size={20} className="text-white" />
-            <span className="text-[9px] font-black uppercase tracking-wider mt-0.5">Simpan</span>
+            <Save size={16} className="text-white" />
+            <span className="text-[8px] font-bold uppercase tracking-wider mt-0.5">Simpan</span>
           </button>
           <button 
             onClick={handleWA}
             disabled={isSendingWA}
-            className="flex-1 h-16 bg-green-500 hover:bg-green-600 text-white rounded-full font-black text-xs uppercase tracking-wider btn-press flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 disabled:opacity-60 transition-all active:scale-95 px-4"
+            className="flex-1 h-12 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider btn-press flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 transition-colors px-3"
           >
-            <Send size={18} className="shrink-0" />
+            <Send size={16} className="shrink-0" />
             <span className="truncate">
-              {isSendingWA ? 'Mengirim...' : waBotConfig.enabled ? 'Kirim WA (Bot WiFi)' : 'Kirim WhatsApp'}
+              {isSendingWA ? 'Mengirim...' : waBotConfig.enabled ? 'Kirim Nota WA (Bot)' : 'Kirim WhatsApp'}
             </span>
           </button>
         </div>
@@ -2254,23 +2329,27 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
 
       {/* Modal Customer List */}
       {showCustomerList && (
-        <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-[200] backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-t-[2rem] p-6 max-h-[70vh] flex flex-col">
-            <div className="flex justify-between items-center mb-4">
+        <div className="fixed inset-0 bg-slate-950/70 flex items-end sm:items-center justify-center z-[200] backdrop-blur-xs p-0 sm:p-4">
+          <div className="card-modal w-full max-w-md p-5 max-h-[75vh] flex flex-col">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-sm uppercase tracking-widest text-slate-800">Daftar Pelanggan</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                <User size={16} className="text-teal-600" />
+                <h3 className="font-extrabold text-sm uppercase tracking-wide text-slate-900">Daftar Pelanggan</h3>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
                   {savedCustomers.length}
                 </span>
               </div>
-              <button onClick={() => setShowCustomerList(false)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
-                <X size={14} />
+              <button 
+                onClick={() => setShowCustomerList(false)} 
+                className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 transition-colors btn-press"
+              >
+                <X size={15} />
               </button>
             </div>
             {savedCustomers.length === 0 ? (
-              <p className="text-center text-slate-300 text-xs py-8">Belum ada pelanggan tersimpan</p>
+              <p className="text-center text-slate-400 text-xs py-8 font-medium">Belum ada data pelanggan tersimpan</p>
             ) : (
-              <div className="overflow-y-auto space-y-2">
+              <div className="overflow-y-auto space-y-2 pr-1">
                 {savedCustomers.map((c: any, i: number) => (
                   <div
                     key={i}
@@ -2278,23 +2357,23 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                       setCustomer({ ...customer, name: c.name, phone: c.phone, address: c.address }); 
                       setShowCustomerList(false); 
                     }}
-                    className="w-full text-left bg-slate-50 hover:bg-slate-100 active:bg-slate-200/80 rounded-2xl px-4 py-3 flex justify-between items-center transition-colors cursor-pointer group"
+                    className="w-full text-left bg-slate-50/80 hover:bg-slate-100 border border-slate-200/80 rounded-xl p-3 flex justify-between items-center transition-colors cursor-pointer group"
                   >
                     <div className="pr-2 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-xs font-black text-slate-800 uppercase group-hover:text-blue-600 transition-colors">{c.name}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-bold text-slate-900 uppercase group-hover:text-teal-700 transition-colors">{c.name}</span>
                         {typeof c.balance === 'number' && c.balance > 0 && (
-                          <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                            <Wallet size={9} />
+                          <span className="text-[9px] font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Wallet size={10} />
                             Saldo: Rp {c.balance.toLocaleString('id-ID')}
                           </span>
                         )}
                       </div>
-                      {c.phone && <p className="text-[10px] text-slate-400">{c.phone}</p>}
-                      {c.address && <p className="text-[10px] text-slate-400">{c.address}</p>}
+                      {c.phone && <p className="text-[10px] text-slate-500 font-mono mt-0.5">{c.phone}</p>}
+                      {c.address && <p className="text-[10px] text-slate-500 truncate max-w-[220px]">{c.address}</p>}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-blue-600 font-black text-[10px] uppercase px-2.5 py-1.5 rounded-xl bg-blue-50 group-hover:bg-blue-100 transition-colors">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-teal-700 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md bg-teal-50 group-hover:bg-teal-100 transition-colors">
                         Pilih
                       </span>
                       <button
@@ -2311,10 +2390,10 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                             }
                           });
                         }}
-                        className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-500 flex items-center justify-center transition-colors"
+                        className="w-7 h-7 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-colors btn-press"
                         title="Hapus pelanggan ini"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
@@ -2332,28 +2411,28 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-[200] backdrop-blur-sm p-6"
+            className="fixed inset-0 bg-slate-950/70 flex items-center justify-center z-[200] backdrop-blur-xs p-4"
           >
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white p-8 rounded-[3rem] text-center max-w-xs w-full shadow-2xl"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="card-modal p-6 text-center max-w-xs w-full"
             >
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
                 {modal.title === 'Gagal' || modal.title === 'Error' ? (
-                  <AlertCircle size={32} className="text-red-500" />
+                  <AlertCircle size={24} className="text-rose-600" />
                 ) : (
-                  <CheckCircle2 size={32} className="text-blue-500" />
+                  <CheckCircle2 size={24} className="text-teal-600" />
                 )}
               </div>
-              <h3 className="font-black text-lg mb-2">{modal.title}</h3>
-              <p className="text-xs text-slate-400 mb-8 font-medium leading-relaxed">
+              <h3 className="font-extrabold text-base text-slate-900 mb-1">{modal.title}</h3>
+              <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">
                 {modal.message}
               </p>
               <button 
                 onClick={() => setModal({ ...modal, visible: false })}
-                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest btn-press"
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs uppercase tracking-wider btn-press"
               >
                 Tutup
               </button>
@@ -2367,33 +2446,33 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-[210] backdrop-blur-sm p-6"
+            className="fixed inset-0 bg-slate-950/70 flex items-center justify-center z-[210] backdrop-blur-xs p-4"
           >
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white p-8 rounded-[3rem] text-center max-w-xs w-full shadow-2xl"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="card-modal p-6 text-center max-w-xs w-full"
             >
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle size={32} className="text-red-500" />
+              <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <AlertCircle size={24} className="text-rose-600" />
               </div>
-              <h3 className="font-black text-lg mb-2">{confirmModal.title}</h3>
-              <p className="text-xs text-slate-400 mb-8 font-medium leading-relaxed">
+              <h3 className="font-extrabold text-base text-slate-900 mb-1">{confirmModal.title}</h3>
+              <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">
                 {confirmModal.message}
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <button 
                   onClick={() => setConfirmModal({ ...confirmModal, visible: false })}
-                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest btn-press"
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs uppercase tracking-wider btn-press"
                 >
                   Batal
                 </button>
                 <button 
                   onClick={confirmModal.onConfirm}
-                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest btn-press shadow-lg shadow-red-500/20"
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider btn-press"
                 >
-                  Ya, Hapus
+                  Ya, Lanjutkan
                 </button>
               </div>
             </motion.div>
@@ -2406,71 +2485,72 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
             initial={{ opacity: 0, y: '100%' }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[300] bg-slate-900 flex flex-col"
+            transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+            className="fixed inset-0 z-[300] bg-slate-950/80 flex flex-col justify-end sm:justify-center sm:p-4 backdrop-blur-xs"
           >
-            <div className="p-6 pb-4 flex justify-between items-center border-b border-slate-800 shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-white mb-1">Pilih Layanan</h2>
-                <p className="text-xs text-slate-400">Silakan pilih layanan laundry Anda</p>
+            <div className="card-modal w-full max-w-md mx-auto max-h-[85vh] flex flex-col bg-white overflow-hidden">
+              <div className="p-4 pb-3 flex justify-between items-center border-b border-slate-100 shrink-0">
+                <div>
+                  <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">Pilih Layanan Laundry</h2>
+                  <p className="text-[11px] text-slate-500">Pilih jenis cuci, setrika, atau perlengkapan lainnya</p>
+                </div>
+                <button
+                  onClick={() => setShowServiceModal(false)}
+                  className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 btn-press"
+                >
+                  <X size={16} />
+                </button>
               </div>
-              <button
-                onClick={() => setShowServiceModal(false)}
-                className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 btn-press"
-              >
-                <ShoppingBag size={18} />
-              </button>
-            </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {SERVICES_CATALOG.map((group, gIdx) => (
-                <div key={gIdx} className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 border-t border-slate-800"></div>
-                    <span className="text-[10px] font-black text-slate-500 tracking-widest uppercase">{group.group}</span>
-                    <div className="flex-1 border-t border-slate-800"></div>
-                  </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {SERVICES_CATALOG.map((group, gIdx) => (
+                  <div key={gIdx} className="space-y-2.5">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-teal-700 tracking-wider uppercase">{group.group}</span>
+                      <div className="flex-1 border-t border-slate-200"></div>
+                    </div>
 
-                  <div className="space-y-3">
-                    {group.items.map((item, iIdx) => {
-                      const flatIndex = flatServices.indexOf(item);
-                      const isSelected = selectedServiceIndex === flatIndex;
-                      const displayName = item.name
-                        .replace(' (KILOAN)', '')
-                        .replace('SEPRAI/SELIMUT/GORDEN - ', '')
-                        .replace('BED COVER - ', '');
+                    <div className="space-y-1.5">
+                      {group.items.map((item, iIdx) => {
+                        const flatIndex = flatServices.indexOf(item);
+                        const isSelected = selectedServiceIndex === flatIndex;
+                        const displayName = item.name
+                          .replace(' (KILOAN)', '')
+                          .replace('SEPRAI/SELIMUT/GORDEN - ', '')
+                          .replace('BED COVER - ', '');
 
-                      return (
-                        <div
-                          key={iIdx}
-                          onClick={() => {
-                            setSelectedServiceIndex(flatIndex);
-                            setShowServiceModal(false);
-                          }}
-                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
-                            isSelected
-                              ? 'border-blue-500 bg-blue-500/10'
-                              : 'border-slate-800 bg-slate-800/50 hover:bg-slate-800'
-                          }`}
-                        >
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-bold text-white">{displayName}</h4>
-                            <div className="inline-block px-3 py-1 bg-slate-900 rounded-full border border-slate-700">
-                              <span className="text-xs font-bold text-blue-400">Rp {item.price.toLocaleString()}</span>
-                              <span className="text-xs font-medium text-slate-400"> / {item.unit}</span>
+                        return (
+                          <div
+                            key={iIdx}
+                            onClick={() => {
+                              setSelectedServiceIndex(flatIndex);
+                              setShowServiceModal(false);
+                            }}
+                            className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                              isSelected
+                                ? 'border-teal-600 bg-teal-50/50 shadow-xs'
+                                : 'border-slate-200/90 bg-white hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-bold text-slate-900 uppercase">{displayName}</h4>
+                              <div className="flex items-center gap-1.5 text-[11px]">
+                                <span className="font-mono font-bold text-teal-700">Rp {item.price.toLocaleString('id-ID')}</span>
+                                <span className="text-slate-400 font-mono">/ {item.unit}</span>
+                              </div>
+                            </div>
+                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                              isSelected ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300'
+                            }`}>
+                              {isSelected && <CheckCircle2 size={14} />}
                             </div>
                           </div>
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            isSelected ? 'border-blue-500' : 'border-slate-600'
-                          }`}>
-                            {isSelected && <div className="w-3 h-3 rounded-full bg-blue-500" />}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
@@ -2736,48 +2816,51 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-[280] backdrop-blur-sm p-0 sm:p-4"
+              className="fixed inset-0 bg-slate-950/70 flex items-end sm:items-center justify-center z-[280] backdrop-blur-xs p-0 sm:p-4"
             >
               <motion.div
-                initial={{ y: 80, opacity: 0 }}
+                initial={{ y: 30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 80, opacity: 0 }}
-                className="bg-white w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 max-h-[92vh] overflow-y-auto space-y-4 shadow-2xl"
+                exit={{ y: 30, opacity: 0 }}
+                className="card-modal w-full max-w-md p-5 max-h-[90vh] overflow-y-auto space-y-4"
               >
                 {/* Header Modal */}
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-sm shadow-emerald-500/20">
-                      <Banknote size={20} />
+                    <div className="w-9 h-9 rounded-lg bg-teal-600 text-white flex items-center justify-center shadow-xs">
+                      <Banknote size={18} />
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-black text-sm uppercase tracking-wide text-slate-900">Input Pembayaran</h3>
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-800">
+                        <h3 className="font-extrabold text-xs uppercase tracking-wide text-slate-900">Input Pembayaran</h3>
+                        <span className="text-slate-300">·</span>
+                        <span className="text-[10px] font-mono font-bold text-teal-700">
                           #LT-{rec.id}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-medium">Hitung pengangsulan & simpan saldo uang lebih</p>
+                      <p className="text-[10px] text-slate-500">Hitung pengangsulan & simpan saldo uang lebih</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setPaymentModal(prev => ({ ...prev, visible: false }))}
-                    className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700"
+                    className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 transition-colors btn-press"
                   >
                     <X size={15} />
                   </button>
                 </div>
 
                 {/* Ringkasan Tagihan */}
-                <div className="bg-slate-900 rounded-2xl p-4 text-white flex justify-between items-center">
+                <div className="bg-slate-900 rounded-xl p-3.5 text-white flex justify-between items-center">
                   <div>
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
-                      Pelanggan: <span className="text-white font-bold">{customerName}</span>
-                    </p>
-                    <p className="text-2xl font-black font-mono mt-0.5">Rp {rec.total.toLocaleString('id-ID')}</p>
+                    <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider block">
+                      Tagihan · <span className="text-white font-semibold">{customerName}</span>
+                    </span>
+                    <span className="text-2xl font-extrabold font-mono tracking-tight mt-0.5 block">
+                      Rp {rec.total.toLocaleString('id-ID')}
+                    </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[8px] font-black px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 uppercase">
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase font-mono">
                       {rec.customer?.delivery || 'AMBIL SENDIRI'}
                     </span>
                   </div>
@@ -2785,21 +2868,21 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
 
                 {/* Pengecekan & Opsi Saldo Simpanan Pelanggan */}
                 {canUseBalance && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-2.5">
+                  <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Wallet size={16} className="text-emerald-600" />
-                        <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
+                        <Wallet size={15} className="text-emerald-700" />
+                        <span className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
                           Saldo Simpanan Tersedia
                         </span>
                       </div>
-                      <span className="text-xs font-black text-emerald-700 font-mono">
+                      <span className="text-xs font-bold text-emerald-800 font-mono">
                         Rp {existingCustBal.toLocaleString('id-ID')}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1">
-                      <label className="text-[10px] font-bold text-emerald-800 flex items-center gap-2 cursor-pointer">
+                    <div className="pt-0.5">
+                      <label className="text-[11px] font-semibold text-emerald-900 flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={paymentModal.useBalance}
@@ -2812,24 +2895,24 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                               inputAmount: newRem === 0 ? '0' : String(newRem)
                             }));
                           }}
-                          className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+                          className="w-4 h-4 rounded text-teal-600 accent-teal-600 cursor-pointer"
                         />
                         <span>Gunakan saldo simpanan untuk potong tagihan</span>
                       </label>
                     </div>
 
                     {paymentModal.useBalance && (
-                      <div className="bg-white/80 rounded-xl p-2.5 text-[9px] text-emerald-900 space-y-1 font-mono border border-emerald-100">
+                      <div className="bg-white/90 rounded-lg p-2.5 text-[10px] text-emerald-950 space-y-1 font-mono border border-emerald-200/70">
                         <div className="flex justify-between">
                           <span>Tagihan Awal:</span>
                           <span>Rp {rec.total.toLocaleString('id-ID')}</span>
                         </div>
-                        <div className="flex justify-between font-bold text-emerald-700">
+                        <div className="flex justify-between text-emerald-700 font-semibold">
                           <span>- Terpotong Saldo:</span>
                           <span>Rp {saldoDigunakan.toLocaleString('id-ID')}</span>
                         </div>
-                        <div className="flex justify-between border-t border-emerald-200/60 pt-1 font-black text-[10px]">
-                          <span>Sisa Tagihan yang Harus Dibayar:</span>
+                        <div className="flex justify-between border-t border-emerald-200 pt-1 font-bold">
+                          <span>Sisa Tagihan Bayar:</span>
                           <span className="text-slate-900">Rp {sisaTagihan.toLocaleString('id-ID')}</span>
                         </div>
                       </div>
@@ -2838,52 +2921,52 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                 )}
 
                 {/* Pilihan Metode Pembayaran: CASH vs TRANSFER */}
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Pilih Metode Pembayaran
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Metode Pembayaran
                   </label>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setPaymentModal(prev => ({ ...prev, paymentMethod: 'CASH' }))}
-                      className={`py-3.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-black text-xs uppercase tracking-wider transition-all btn-press ${
+                      className={`py-2.5 px-3 rounded-lg border flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider transition-all btn-press ${
                         paymentModal.paymentMethod === 'CASH'
-                          ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
-                          : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                          ? 'border-teal-600 bg-teal-50 text-teal-800 shadow-xs'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      <Coins size={16} />
-                      <span>💵 CASH (Tunai)</span>
+                      <Coins size={15} />
+                      <span>Cash (Tunai)</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setPaymentModal(prev => ({ ...prev, paymentMethod: 'TRANSFER' }))}
-                      className={`py-3.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-black text-xs uppercase tracking-wider transition-all btn-press ${
+                      className={`py-2.5 px-3 rounded-lg border flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider transition-all btn-press ${
                         paymentModal.paymentMethod === 'TRANSFER'
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm'
-                          : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                          ? 'border-teal-600 bg-teal-50 text-teal-800 shadow-xs'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      <CreditCard size={16} />
-                      <span>📱 TRANSFER (TF)</span>
+                      <CreditCard size={15} />
+                      <span>Transfer (TF)</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Input Jumlah Uang yang Diterima (jika sisaTagihan > 0) */}
+                {/* Input Jumlah Uang yang Diterima */}
                 {sisaTagihan > 0 ? (
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Uang yang Diterima
                       </label>
-                      <span className="text-[10px] font-bold text-slate-500 font-mono">
+                      <span className="text-[10px] font-bold text-slate-600 font-mono">
                         Harus Bayar: Rp {sisaTagihan.toLocaleString('id-ID')}
                       </span>
                     </div>
 
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">
                         Rp
                       </span>
                       <input
@@ -2891,7 +2974,7 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                         placeholder="0"
                         value={paymentModal.inputAmount}
                         onChange={e => setPaymentModal(prev => ({ ...prev, inputAmount: e.target.value }))}
-                        className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-mono font-black text-base text-slate-900 outline-none focus:border-blue-500 focus:bg-white"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-sm text-slate-900 outline-none focus:border-teal-600 focus:bg-white transition-colors"
                       />
                     </div>
 
@@ -2900,7 +2983,7 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                       <button
                         type="button"
                         onClick={() => setPaymentModal(prev => ({ ...prev, inputAmount: String(sisaTagihan) }))}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-[9px] font-black uppercase text-slate-700 transition-colors"
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px] font-bold uppercase text-slate-700 transition-colors btn-press"
                       >
                         Uang Pas
                       </button>
@@ -2909,7 +2992,7 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                           key={val}
                           type="button"
                           onClick={() => setPaymentModal(prev => ({ ...prev, inputAmount: String(val) }))}
-                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-[9px] font-bold text-slate-600 transition-colors font-mono"
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px] font-bold text-slate-700 transition-colors font-mono btn-press"
                         >
                           Rp {val.toLocaleString('id-ID')}
                         </button>
@@ -2917,74 +3000,74 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                       <button
                         type="button"
                         onClick={() => setPaymentModal(prev => ({ ...prev, inputAmount: '' }))}
-                        className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 rounded-xl text-[9px] font-bold text-rose-600 transition-colors"
+                        className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 rounded-md text-[10px] font-bold text-rose-600 transition-colors btn-press"
                       >
                         Reset
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-[10px] text-emerald-800 font-bold flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                    <span>Tagihan Rp {rec.total.toLocaleString('id-ID')} terpotong lunas oleh Saldo Simpanan (Rp {saldoDigunakan.toLocaleString('id-ID')}). Tanpa perlu bayar tunai lagi.</span>
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 font-medium flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
+                    <span>Tagihan Rp {rec.total.toLocaleString('id-ID')} lunas oleh Saldo Simpanan (Rp {saldoDigunakan.toLocaleString('id-ID')}).</span>
                   </div>
                 )}
 
                 {/* Perhitungan Pengangsulan / Kembalian & Saldo Simpanan */}
                 {sisaTagihan > 0 && selisihUang > 0 && (
-                  <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 space-y-3">
+                  <div className="bg-amber-50/80 border border-amber-200/90 rounded-xl p-3.5 space-y-2.5">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
+                        <span className="text-[10px] font-bold uppercase text-amber-900 tracking-wider block">
                           Uang Lebih (Pengangsulan)
-                        </p>
-                        <p className="text-xl font-black text-amber-800 font-mono">
+                        </span>
+                        <span className="text-lg font-extrabold text-amber-950 font-mono">
                           Rp {selisihUang.toLocaleString('id-ID')}
-                        </p>
+                        </span>
                       </div>
-                      <span className="px-2.5 py-1 bg-amber-100 text-amber-900 rounded-xl text-[9px] font-black uppercase">
-                        Kelebihan Uang
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded text-[9px] font-bold uppercase tracking-wider">
+                        Kelebihan
                       </span>
                     </div>
 
                     {/* Opsi Tindakan Uang Lebih */}
-                    <div className="space-y-2 pt-1 border-t border-amber-200/70">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-950">
-                        Pilih Perlakuan Uang Lebih:
-                      </p>
+                    <div className="space-y-1.5 pt-1 border-t border-amber-200/70">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-950 block">
+                        Perlakuan Uang Lebih:
+                      </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => setPaymentModal(prev => ({ ...prev, excessAction: 'CHANGE' }))}
-                          className={`p-3 rounded-xl border-2 text-left transition-all ${
+                          className={`p-2.5 rounded-lg border text-left transition-all btn-press ${
                             paymentModal.excessAction === 'CHANGE'
-                              ? 'border-emerald-500 bg-white shadow-sm ring-1 ring-emerald-500'
-                              : 'border-amber-200 bg-amber-50/50 hover:bg-white'
+                              ? 'border-teal-600 bg-white shadow-xs'
+                              : 'border-amber-200/90 bg-amber-50/50 hover:bg-white'
                           }`}
                         >
-                          <p className="text-[10px] font-black text-slate-900 uppercase">
+                          <p className="text-[10px] font-bold text-slate-900 uppercase">
                             A. Kembalikan Tunai
                           </p>
-                          <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
-                            Pengangsulan Rp {selisihUang.toLocaleString('id-ID')} diserahkan langsung ke pelanggan.
+                          <p className="text-[9px] text-slate-500 mt-0.5 font-mono">
+                            Pengangsulan Rp {selisihUang.toLocaleString('id-ID')}
                           </p>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setPaymentModal(prev => ({ ...prev, excessAction: 'SAVE_BALANCE' }))}
-                          className={`p-3 rounded-xl border-2 text-left transition-all ${
+                          className={`p-2.5 rounded-lg border text-left transition-all btn-press ${
                             paymentModal.excessAction === 'SAVE_BALANCE'
-                              ? 'border-blue-600 bg-white shadow-sm ring-1 ring-blue-600'
-                              : 'border-amber-200 bg-amber-50/50 hover:bg-white'
+                              ? 'border-teal-600 bg-white shadow-xs'
+                              : 'border-amber-200/90 bg-amber-50/50 hover:bg-white'
                           }`}
                         >
-                          <p className="text-[10px] font-black text-blue-900 uppercase flex items-center gap-1">
-                            <Wallet size={11} className="text-blue-600" />
+                          <p className="text-[10px] font-bold text-teal-800 uppercase flex items-center gap-1">
+                            <Wallet size={11} className="text-teal-600" />
                             B. Simpan Jadi Saldo
                           </p>
-                          <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
-                            Disimpan otomatis untuk memotong cucian Kak {customerName} berikutnya.
+                          <p className="text-[9px] text-slate-500 mt-0.5">
+                            Disimpan untuk nota cucian berikutnya
                           </p>
                         </button>
                       </div>
@@ -2994,9 +3077,9 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
 
                 {/* Sisa Saldo Tersimpan Pelanggan */}
                 {saldoBaruSimpanan > 0 && (
-                  <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 flex justify-between items-center text-[10px]">
-                    <span className="font-bold text-slate-500">Sisa Saldo Tersimpan Pelanggan:</span>
-                    <span className="font-black text-emerald-700 font-mono">
+                  <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-200/80 flex justify-between items-center text-[10px]">
+                    <span className="font-semibold text-slate-500">Sisa Saldo Tersimpan Pelanggan:</span>
+                    <span className="font-bold text-emerald-800 font-mono">
                       Rp {saldoBaruSimpanan.toLocaleString('id-ID')}
                     </span>
                   </div>
@@ -3004,33 +3087,33 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
 
                 {/* Peringatan jika uang masih kurang */}
                 {sisaTagihan > 0 && selisihUang < 0 && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-[10px] text-rose-700 font-bold flex items-center gap-2">
-                    <AlertCircle size={15} className="shrink-0" />
-                    <span>Uang yang diterima masih kurang Rp {Math.abs(selisihUang).toLocaleString('id-ID')}</span>
+                  <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-[10px] text-rose-700 font-bold flex items-center gap-2">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>Uang diterima masih kurang Rp {Math.abs(selisihUang).toLocaleString('id-ID')}</span>
                   </div>
                 )}
 
                 {/* Tombol Cetak & Konfirmasi */}
-                <div className="space-y-2 pt-2">
+                <div className="space-y-2 pt-1">
                   <div className="flex gap-2">
                     <button
                       type="button"
                       disabled={!isCukup}
                       onClick={handlePrintFromModal}
-                      className="flex-1 py-3 px-2 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all btn-press disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-sm"
+                      className="flex-1 py-2.5 px-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider transition-colors btn-press disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-xs"
                       title="Cetak Struk Thermal Bluetooth (Mencatat Pembayaran & Saldo)"
                     >
-                      <Printer size={15} />
-                      <span>Cetak Struk Saja</span>
+                      <Printer size={14} />
+                      <span>Cetak Struk</span>
                     </button>
                     <button
                       type="button"
                       disabled={!isCukup || isSendingWA}
                       onClick={handlePrintAndConfirmPayment}
-                      className="flex-1 py-3 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all btn-press disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20"
+                      className="flex-1 py-2.5 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider transition-colors btn-press disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-xs"
                       title="Cetak Struk Sekaligus Konfirmasi Lunas & Kirim WhatsApp"
                     >
-                      <Printer size={15} />
+                      <Printer size={14} />
                       <span>Cetak & Konfirmasi</span>
                     </button>
                   </div>
@@ -3039,7 +3122,7 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                     <button
                       type="button"
                       onClick={() => setPaymentModal(prev => ({ ...prev, visible: false }))}
-                      className="w-24 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-colors btn-press shrink-0"
+                      className="w-20 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-colors btn-press shrink-0"
                     >
                       Batal
                     </button>
@@ -3047,9 +3130,9 @@ Kami dari Laundry Tante Tika mau mengonfirmasi bahwa pembayaran cucian Kak sebes
                       type="button"
                       disabled={!isCukup || isSendingWA}
                       onClick={handleExecutePayment}
-                      className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider shadow-lg shadow-emerald-600/20 disabled:opacity-40 transition-all btn-press flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider shadow-xs disabled:opacity-40 transition-colors btn-press flex items-center justify-center gap-1.5"
                     >
-                      <CheckCircle2 size={16} />
+                      <CheckCircle2 size={15} />
                       <span>{isSendingWA ? 'Memproses...' : 'Konfirmasi & Kirim WA'}</span>
                     </button>
                   </div>

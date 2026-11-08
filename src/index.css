@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -7,21 +7,48 @@
 }
 
 @layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
   body {
-    @apply bg-slate-50 text-slate-900 font-sans overflow-x-hidden;
+    @apply bg-slate-100/70 text-slate-900 font-sans overflow-x-hidden min-h-screen;
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer utilities {
   .btn-press {
-    @apply active:scale-95 transition-transform duration-100;
+    @apply active:scale-[0.97] transition-all duration-150 ease-out select-none cursor-pointer;
+  }
+  .glass-header {
+    @apply bg-white/80 backdrop-blur-md border-b border-slate-200/80;
   }
   .glass-nav {
-    @apply bg-slate-900/90 backdrop-blur-md border-t border-white/10;
+    @apply bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/80 shadow-2xl shadow-slate-950/20;
   }
-  .nota-container {
-    @apply bg-white rounded-[3rem] shadow-2xl shadow-slate-200/50 border border-slate-100;
+  .card-pos {
+    @apply bg-white rounded-2xl border border-slate-200/90 shadow-[0_1px_3px_rgba(0,0,0,0.03),0_10px_20px_-5px_rgba(0,0,0,0.02)];
   }
+  .card-modal {
+    @apply bg-white rounded-3xl border border-slate-100 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.3)];
+  }
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Hide spin-buttons for input number */
